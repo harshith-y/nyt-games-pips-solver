@@ -1,0 +1,674 @@
+# constraint_extract.py
+# Phase 5: Constraint Extraction (Badge Detection & Section Assignment)
+# Steps 1-6: Detect badges, extract colors, match to sections
+# Step 7: OCR badge text using EasyOCR
+
+import cv2
+import numpy as np
+from typing import List, Dict, Tuple, Optional
+from dataclasses import dataclass
+from Vision.cell_grid import GridResult
+import easyocr
+from PIL import Image
+
+
+@dataclass
+class Badge:
+    """Represents a detected constraint badge"""
+    bbox: Tuple[int, int, int, int]  # (x, y, w, h)
+    center: Tuple[int, int]  # (x, y)
+    color_rgb: Tuple[int, int, int]  # Detected badge color
+    color_hex: str  # Badge color as hex
+    section_color: str  # Mapped section color (hex)
+    section_id: Optional[int] = None  # Which section this badge belongs to
+    text: Optional[str] = None  # OCR result (will be added in step 7)
+    roi: Optional[np.ndarray] = None  # Badge image region
+
+
+# Badge-to-Section color mapping
+BADGE_TO_SECTION_MAP = {
+    "#9251ca": "#c3a2bf",  # Purple badge → Purple section
+    "#d15609": "#e9bd8c",  # Orange badge → Peach section
+    "#464fb1": "#b2a5bf",  # Blue badge → Lilac section
+    "#db137a": "#e89fae",  # Magenta badge → Pink section
+    "#008293": "#9dbfc1",  # Teal badge → Teal-gray section
+    "#547601": "#b6b18a",  # Olive badge → Olive section
+    # Note: Beige (#e1cbc5) has no badge - unconstrained cells
+}
+
+
+def _rgb_to_hex(rgb: Tuple[int, int, int]) -> str:
+    """Convert RGB tuple to hex string"""
+    return "#{:02x}{:02x}{:02x}".format(int(rgb[0]), int(rgb[1]), int(rgb[2]))
+
+
+def _hex_to_rgb(hex_color: str) -> Tuple[int, int, int]:
+    """Convert hex string to RGB tuple"""
+    hex_color = hex_color.lstrip('#')
+    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+
+
+def _color_distance(rgb1: Tuple[int, int, int], rgb2: Tuple[int, int, int]) -> float:
+    """Calculate Euclidean distance between two RGB colors"""
+    # Convert to float to avoid overflow
+    r1, g1, b1 = float(rgb1[0]), float(rgb1[1]), float(rgb1[2])
+    r2, g2, b2 = float(rgb2[0]), float(rgb2[1]), float(rgb2[2])
+    return np.sqrt((r1 - r2)**2 + (g1 - g2)**2 + (b1 - b2)**2)
+
+
+def _get_dominant_color(roi: np.ndarray) -> Tuple[int, int, int]:
+    """
+    Extract dominant color from badge ROI using mode (most common color).
+    Quantizes color space to find most frequent color bin.
+    """
+    if roi.size == 0:
+        return (0, 0, 0)
+    
+    # Flatten pixels
+    pixels = roi.reshape(-1, 3)
+    
+    # Quantize to reduce color space (group similar colors)
+    quantized = (pixels // 16).astype(np.uint8)  # Bin size of 16
+    
+    # Find most common quantized color
+    unique_colors, counts = np.unique(quantized, axis=0, return_counts=True)
+    most_common_idx = np.argmax(counts)
+    mode_color_quantized = unique_colors[most_common_idx]
+    
+    # Get actual pixels in this bin
+    matches = np.all(quantized == mode_color_quantized, axis=1)
+    mode_pixels = pixels[matches]
+    
+    # Use mean of this bin as representative color
+    mode_color = mode_pixels.mean(axis=0).astype(np.uint8)
+    
+    return tuple(mode_color)
+
+
+def _preprocess_for_ocr(badge_roi: np.ndarray) -> np.ndarray:
+    """
+    Preprocess badge image for OCR.
+    Goal: BLACK text on WHITE background, high contrast.
+    
+    Args:
+        badge_roi: Badge image region (RGB)
+    
+    Returns:
+        Binary image (grayscale, pure black/white with BLACK text on WHITE bg)
+    """
+    # 1. Convert to grayscale
+    if len(badge_roi.shape) == 3:
+        gray = cv2.cvtColor(badge_roi, cv2.COLOR_RGB2GRAY)
+    else:
+        gray = badge_roi.copy()
+    
+    # 2. Resize significantly if too small (OCR likes 50-70px text height)
+    h, w = gray.shape
+    if h < 50:
+        scale = 60 / h
+        new_w = int(w * scale)
+        new_h = 60
+        gray = cv2.resize(gray, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
+    
+    # 3. Apply bilateral filter to reduce noise while preserving edges
+    gray = cv2.bilateralFilter(gray, 9, 75, 75)
+    
+    # 4. Otsu's thresholding
+    _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    
+    # 5. CRITICAL: ALWAYS ensure BLACK text on WHITE background
+    # Check what the text color is by looking at a small region in the center
+    h, w = binary.shape
+    center_h = slice(h//3, 2*h//3)
+    center_w = slice(w//3, 2*w//3)
+    center = binary[center_h, center_w]
+    
+    # Get mean value of center region (where text likely is)
+    center_mean = center.mean()
+    
+    # If center is bright (>127), text is white -> need to invert
+    if center_mean > 127:
+        binary = cv2.bitwise_not(binary)
+    
+    # 6. Morphological operations to clean up
+    kernel = np.ones((2, 2), np.uint8)
+    binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
+    binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
+    
+    return binary
+
+
+def ocr_badge_text_easyocr(badge_roi: np.ndarray, reader, debug: bool = False, 
+                           badge_id: int = 0, debug_dir: str = "data/debug") -> str:
+    """
+    Extract text from badge using EasyOCR.
+    
+    Args:
+        badge_roi: Badge image region (RGB numpy array)
+        reader: EasyOCR reader instance
+        debug: If True, print OCR results and save debug images
+        badge_id: Badge number for debug file naming
+        debug_dir: Directory to save debug images
+    
+    Returns:
+        Detected text (e.g., ">4", "12", "=")
+    """
+    if badge_roi is None or badge_roi.size == 0:
+        return ""
+    
+    # Step 1: Extract center region (text is in middle of badge)
+    h, w = badge_roi.shape[:2]
+    if h < 10 or w < 10:  # Too small
+        return ""
+    
+    # Extract inner region (avoid badge borders)
+    pad_h = h // 6
+    pad_w = w // 6
+    text_region = badge_roi[pad_h:h-pad_h, pad_w:w-pad_w]
+    
+    # Step 2: Try MULTIPLE approaches with EasyOCR
+    all_results = []
+    
+    # APPROACH 1: Use ORIGINAL colored badge (no preprocessing)
+    # Upscale for better detection
+    h_orig, w_orig = text_region.shape[:2]
+    if h_orig < 80:
+        scale = 120 / h_orig  # Even bigger
+        new_w = int(w_orig * scale)
+        upscaled_color = cv2.resize(text_region, (new_w, 120), interpolation=cv2.INTER_CUBIC)
+    else:
+        upscaled_color = text_region
+    
+    try:
+        # Try with allowlist
+        results1 = reader.readtext(
+            upscaled_color,
+            detail=1,
+            paragraph=False,
+            allowlist='0123456789<>=÷',
+            text_threshold=0.4,  # Lower threshold to detect more
+        )
+        all_results.extend([(r[1], r[2], 'color+allowlist') for r in results1])
+        
+        # Try WITHOUT allowlist (might catch = and 0 better)
+        results2 = reader.readtext(
+            upscaled_color,
+            detail=1,
+            paragraph=False,
+            text_threshold=0.4,
+        )
+        all_results.extend([(r[1], r[2], 'color+no_allowlist') for r in results2])
+        
+    except Exception as e:
+        if debug:
+            print(f"    Approach 1 (color) failed: {e}")
+    
+    # APPROACH 2: Use preprocessed black/white
+    processed = _preprocess_for_ocr(text_region)
+    h, w = processed.shape
+    if h < 80:
+        scale = 120 / h
+        new_w = int(w * scale)
+        processed = cv2.resize(processed, (new_w, 120), interpolation=cv2.INTER_CUBIC)
+    
+    # Convert to RGB for EasyOCR
+    if len(processed.shape) == 2:
+        processed_rgb = cv2.cvtColor(processed, cv2.COLOR_GRAY2RGB)
+    else:
+        processed_rgb = processed
+    
+    try:
+        # Try preprocessed with allowlist
+        results3 = reader.readtext(
+            processed_rgb,
+            detail=1,
+            paragraph=False,
+            allowlist='0123456789<>=÷',
+            text_threshold=0.4,
+        )
+        all_results.extend([(r[1], r[2], 'preprocessed+allowlist') for r in results3])
+        
+        # Try preprocessed without allowlist
+        results4 = reader.readtext(
+            processed_rgb,
+            detail=1,
+            paragraph=False,
+            text_threshold=0.4,
+        )
+        all_results.extend([(r[1], r[2], 'preprocessed+no_allowlist') for r in results4])
+        
+    except Exception as e:
+        if debug:
+            print(f"    Approach 2 (preprocessed) failed: {e}")
+    
+    # APPROACH 3: Try inverted preprocessed (white text on black)
+    try:
+        inverted = cv2.bitwise_not(processed)
+        inverted_rgb = cv2.cvtColor(inverted, cv2.COLOR_GRAY2RGB)
+        
+        results5 = reader.readtext(
+            inverted_rgb,
+            detail=1,
+            paragraph=False,
+            allowlist='0123456789<>=÷',
+            text_threshold=0.4,
+        )
+        all_results.extend([(r[1], r[2], 'inverted+allowlist') for r in results5])
+        
+    except Exception as e:
+        if debug:
+            print(f"    Approach 3 (inverted) failed: {e}")
+    
+    # Step 3: Pick best result
+    if debug:
+        print(f"    EasyOCR found {len(all_results)} total results:")
+        for text, conf, approach in sorted(all_results, key=lambda x: x[1], reverse=True)[:5]:
+            print(f"      '{text}' (conf={conf:.2f}, {approach})")
+    
+    if all_results:
+        # Get result with highest confidence
+        best = max(all_results, key=lambda x: x[1])
+        text = best[0]
+        confidence = best[1]
+    else:
+        text = ""
+        confidence = 0.0
+    
+    # SPECIAL HANDLING: If no results, try even more aggressive settings
+    if not text and debug:
+        print(f"    No text detected! Trying ultra-aggressive settings...")
+    
+    if not text:
+        # Last resort: Try with VERY low threshold and no allowlist
+        try:
+            # Try the inverted image with minimal restrictions
+            inverted = cv2.bitwise_not(processed)
+            inverted_rgb = cv2.cvtColor(inverted, cv2.COLOR_GRAY2RGB)
+            
+            emergency_results = reader.readtext(
+                inverted_rgb,
+                detail=1,
+                paragraph=False,
+                text_threshold=0.1,  # VERY low threshold
+                low_text=0.1,  # Low text score threshold
+                link_threshold=0.1,  # Low link threshold
+            )
+            
+            if emergency_results and debug:
+                print(f"    Emergency detection found {len(emergency_results)} results:")
+                for bbox, t, c in emergency_results:
+                    print(f"      '{t}' (conf={c:.2f})")
+            
+            if emergency_results:
+                best_emergency = max(emergency_results, key=lambda x: x[2])
+                text = best_emergency[1]
+                confidence = best_emergency[2]
+                if debug:
+                    print(f"    Using emergency result: '{text}' (conf={confidence:.2f})")
+        except Exception as e:
+            if debug:
+                print(f"    Emergency detection failed: {e}")
+    
+    # Step 4: Clean up result
+    text = text.strip()
+    text = text.replace(" ", "")
+    text = text.replace("\n", "")
+    
+    # Common OCR mistakes
+    text = text.replace("O", "0")
+    text = text.replace("o", "0")
+    text = text.replace("l", "1")
+    text = text.replace("I", "1")
+    text = text.replace("S", "5")
+    text = text.replace("|", "1")
+    
+    if debug:
+        print(f"    FINAL Result: '{text}' (confidence: {confidence:.2f})")
+    
+    return text
+
+
+def detect_badges(board_rgb: np.ndarray,
+                  saturation_threshold: int = 100,
+                  min_area: int = 800,
+                  max_area: int = 5000,
+                  aspect_ratio_range: Tuple[float, float] = (0.7, 1.3),
+                  debug: bool = False) -> List[Badge]:
+    """
+    Detect constraint badges in the board image (Steps 1-4).
+    
+    Args:
+        board_rgb: RGB image of the board
+        saturation_threshold: Min saturation to consider as badge (0-255)
+        min_area: Minimum badge area in pixels
+        max_area: Maximum badge area in pixels
+        aspect_ratio_range: (min, max) aspect ratio for badge bounding box
+        debug: If True, print debug information
+    
+    Returns:
+        List of detected Badge objects
+    """
+    # Step 1: Convert to HSV and filter by saturation
+    hsv = cv2.cvtColor(board_rgb, cv2.COLOR_RGB2HSV)
+    saturation = hsv[:, :, 1]
+    
+    # Create binary mask: high saturation = badges
+    mask = (saturation > saturation_threshold).astype(np.uint8) * 255
+    
+    if debug:
+        print(f"\n{'='*70}")
+        print(f"DEBUG: Badge Detection")
+        print(f"{'='*70}")
+        print(f"  Saturation threshold: {saturation_threshold}")
+        print(f"  Mask pixels above threshold: {np.sum(mask > 0)}")
+    
+    # Step 2: Find contours (blob detection)
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    if debug:
+        print(f"  Total contours found: {len(contours)}")
+    
+    # Step 3: Filter by size and shape
+    badges = []
+    min_aspect, max_aspect = aspect_ratio_range
+    
+    for i, contour in enumerate(contours):
+        area = cv2.contourArea(contour)
+        x, y, w, h = cv2.boundingRect(contour)
+        
+        # Skip if too small or too large
+        if area < min_area or area > max_area:
+            continue
+        
+        # Check aspect ratio (roughly square)
+        aspect_ratio = w / h if h > 0 else 0
+        if aspect_ratio < min_aspect or aspect_ratio > max_aspect:
+            continue
+        
+        # Step 4: Extract color from badge
+        badge_roi = board_rgb[y:y+h, x:x+w]
+        dominant_color = _get_dominant_color(badge_roi)
+        color_hex = _rgb_to_hex(dominant_color)
+        
+        center = (x + w // 2, y + h // 2)
+        
+        badge = Badge(
+            bbox=(x, y, w, h),
+            center=center,
+            color_rgb=dominant_color,
+            color_hex=color_hex,
+            section_color="",  # Will be filled in step 5
+            roi=badge_roi
+        )
+        
+        badges.append(badge)
+        
+        if debug:
+            print(f"  Badge {len(badges)}: area={area:.0f}, bbox=({x},{y},{w},{h}), "
+                  f"aspect={aspect_ratio:.2f}, color={color_hex}")
+    
+    if debug:
+        print(f"  Filtered badges: {len(badges)}")
+        print(f"{'='*70}\n")
+    
+    return badges
+
+
+def match_badge_to_section_color(badge: Badge, tolerance: float = 50.0) -> str:
+    """
+    Match detected badge color to known badge colors (Step 5).
+    
+    Args:
+        badge: Badge object with color_rgb
+        tolerance: Max RGB distance to accept match
+    
+    Returns:
+        Section color (hex) that this badge corresponds to
+    """
+    min_distance = float('inf')
+    best_section_color = None
+    
+    for badge_hex, section_hex in BADGE_TO_SECTION_MAP.items():
+        badge_ref_rgb = _hex_to_rgb(badge_hex)
+        distance = _color_distance(badge.color_rgb, badge_ref_rgb)
+        
+        if distance < min_distance:
+            min_distance = distance
+            best_section_color = section_hex
+    
+    # If no good match found, return empty string
+    if min_distance > tolerance:
+        return ""
+    
+    return best_section_color
+
+
+def assign_badge_to_section(badge: Badge,
+                            grid: GridResult,
+                            board_rgb: np.ndarray,
+                            already_assigned_sections: set,
+                            search_distance: int = 100) -> Optional[int]:
+    """
+    Find which section this badge belongs to (Step 6).
+    Badges are placed on the RIGHT or BOTTOM edge of their section.
+    So we search LEFT and UP from the badge position.
+    
+    CRITICAL: Each section can only have ONE badge!
+    
+    Args:
+        badge: Badge object
+        grid: GridResult with cells and section assignments
+        board_rgb: RGB image to extract section colors if needed
+        already_assigned_sections: Set of section IDs that already have badges
+        search_distance: How far left/up to search (pixels)
+    
+    Returns:
+        Section ID, or None if no match found
+    """
+    badge_x, badge_y = badge.center
+    
+    # Build section info: section_id -> {cells, bbox}
+    sections = {}
+    for cell in grid.cells:
+        if cell.section not in sections:
+            sections[cell.section] = {
+                'cells': [],
+                'min_x': float('inf'),
+                'max_x': float('-inf'),
+                'min_y': float('inf'),
+                'max_y': float('-inf')
+            }
+        sections[cell.section]['cells'].append(cell)
+        
+        # Update section bounding box
+        cx, cy = cell.center
+        sections[cell.section]['min_x'] = min(sections[cell.section]['min_x'], cx - cell.bbox[2]//2)
+        sections[cell.section]['max_x'] = max(sections[cell.section]['max_x'], cx + cell.bbox[2]//2)
+        sections[cell.section]['min_y'] = min(sections[cell.section]['min_y'], cy - cell.bbox[3]//2)
+        sections[cell.section]['max_y'] = max(sections[cell.section]['max_y'], cy + cell.bbox[3]//2)
+    
+    # STRATEGY: Check which sections are to the LEFT or ABOVE the badge
+    # Badges sit on the right/bottom edge of sections
+    
+    candidates = []
+    
+    for section_id, section_data in sections.items():
+        # SKIP if this section already has a badge assigned
+        if section_id in already_assigned_sections:
+            continue
+        
+        # Check if badge is on the RIGHT edge of this section (section is to the LEFT)
+        on_right_edge = (
+            section_data['min_x'] <= badge_x - search_distance and  # Section extends left
+            section_data['max_x'] >= badge_x - search_distance and  # But not too far left
+            section_data['min_y'] <= badge_y <= section_data['max_y']  # Y overlaps
+        )
+        
+        # Check if badge is on the BOTTOM edge of this section (section is ABOVE)
+        on_bottom_edge = (
+            section_data['min_y'] <= badge_y - search_distance and  # Section extends up
+            section_data['max_y'] >= badge_y - search_distance and  # But not too far up
+            section_data['min_x'] <= badge_x <= section_data['max_x']  # X overlaps
+        )
+        
+        if on_right_edge or on_bottom_edge:
+            # Calculate distance to section
+            # Use closest point on section boundary
+            closest_x = max(section_data['min_x'], min(badge_x, section_data['max_x']))
+            closest_y = max(section_data['min_y'], min(badge_y, section_data['max_y']))
+            dist = np.sqrt((badge_x - closest_x)**2 + (badge_y - closest_y)**2)
+            
+            candidates.append((section_id, dist))
+    
+    if not candidates:
+        # Fallback: Find closest unassigned section (any direction)
+        for section_id, section_data in sections.items():
+            # SKIP if already assigned
+            if section_id in already_assigned_sections:
+                continue
+            
+            # Find closest cell in this section
+            min_dist = float('inf')
+            for cell in section_data['cells']:
+                cx, cy = cell.center
+                dist = np.sqrt((badge_x - cx)**2 + (badge_y - cy)**2)
+                min_dist = min(min_dist, dist)
+            candidates.append((section_id, min_dist))
+    
+    if not candidates:
+        return None
+    
+    # Return the closest unassigned section
+    candidates.sort(key=lambda x: x[1])
+    return candidates[0][0]
+
+
+def extract_constraints(grid: GridResult,
+                       board_rgb: np.ndarray,
+                       debug: bool = False,
+                       debug_dir: str = "data/debug",
+                       reader=None) -> GridResult:
+    """
+    Main function: Detect badges and assign to sections (Steps 1-7).
+    Now uses EasyOCR for text extraction!
+    
+    Args:
+        grid: GridResult with cells and sections already assigned
+        board_rgb: RGB image of the board
+        debug: If True, print debug information
+        debug_dir: Directory to save debug images
+        reader: EasyOCR reader instance (will create if None)
+    
+    Returns:
+        Updated GridResult with badges (including OCR text)
+    """
+    # Initialize EasyOCR reader if not provided
+    if reader is None:
+        if debug:
+            print(f"\n{'='*70}")
+            print(f"Initializing EasyOCR (first run downloads models ~100MB)...")
+            print(f"{'='*70}")
+        reader = easyocr.Reader(['en'], gpu=False)
+    
+    # Step 1-4: Detect badges
+    badges = detect_badges(board_rgb, debug=debug)
+    
+    # Step 5: Match badge colors to section colors
+    for badge in badges:
+        badge.section_color = match_badge_to_section_color(badge)
+    
+    # Step 6: Assign badges to sections
+    # Track which sections already have badges (each section can only have ONE badge)
+    already_assigned_sections = set()
+    
+    for badge in badges:
+        badge.section_id = assign_badge_to_section(
+            badge, grid, board_rgb, already_assigned_sections
+        )
+        if badge.section_id is not None:
+            already_assigned_sections.add(badge.section_id)
+    
+    # Step 7: OCR the badge text with EasyOCR
+    if debug:
+        print(f"\n{'='*70}")
+        print(f"DEBUG: OCR Badge Text (EasyOCR)")
+        print(f"{'='*70}")
+    
+    for i, badge in enumerate(badges):
+        if debug:
+            print(f"  Badge {i+1}:")
+        badge.text = ocr_badge_text_easyocr(badge.roi, reader, debug=debug, 
+                                           badge_id=i+1, debug_dir=debug_dir)
+        if debug and not badge.text:
+            print(f"    FINAL Result: (empty)")
+    
+    if debug:
+        print(f"{'='*70}\n")
+        print(f"  Debug images saved to {debug_dir}/badge_*.png")
+    
+    if debug:
+        print(f"\n{'='*70}")
+        print(f"DEBUG: Badge-to-Section Assignment Summary")
+        print(f"{'='*70}")
+        for i, badge in enumerate(badges):
+            print(f"  Badge {i+1}:")
+            print(f"    Position: {badge.center}")
+            print(f"    Detected color: {badge.color_hex}")
+            print(f"    Mapped to section color: {badge.section_color}")
+            print(f"    Assigned to section ID: {badge.section_id}")
+            print(f"    OCR Text: '{badge.text}'")
+        print(f"{'='*70}\n")
+    
+    # Store badges in grid debug info
+    if not hasattr(grid, 'badges'):
+        grid.badges = badges
+    else:
+        grid.badges = badges
+    
+    return grid
+
+
+def visualize_badges(board_rgb: np.ndarray,
+                     grid: GridResult,
+                     alpha: float = 0.6) -> np.ndarray:
+    """
+    Visualize detected badges on the board image.
+    Now includes OCR text!
+    
+    Args:
+        board_rgb: Original RGB board image
+        grid: GridResult with badges stored
+        alpha: Transparency for overlays
+    
+    Returns:
+        BGR image with badge visualizations
+    """
+    # Convert to BGR for OpenCV
+    vis = cv2.cvtColor(board_rgb.copy(), cv2.COLOR_RGB2BGR)
+    
+    if not hasattr(grid, 'badges'):
+        return vis
+    
+    # Draw each badge
+    for badge in grid.badges:
+        x, y, w, h = badge.bbox
+        
+        # Draw bounding box
+        cv2.rectangle(vis, (x, y), (x+w, y+h), (0, 255, 255), 2)  # Yellow box
+        
+        # Draw center point
+        cv2.circle(vis, badge.center, 5, (0, 0, 255), -1)  # Red dot
+        
+        # Draw section ID and OCR text
+        if badge.section_id is not None:
+            label = f"S{badge.section_id}"
+            if badge.text:
+                label += f": {badge.text}"
+            
+            # Draw text with background for readability
+            (text_w, text_h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)
+            cv2.rectangle(vis, (x, y-text_h-10), (x+text_w+5, y), (0, 0, 0), -1)
+            cv2.putText(vis, label, (x, y-5), cv2.FONT_HERSHEY_SIMPLEX,
+                       0.5, (255, 255, 255), 2)
+    
+    return vis
