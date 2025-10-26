@@ -1,8 +1,4 @@
 # constraint_extract.py
-# Phase 5: Constraint Extraction (Badge Detection & Section Assignment)
-# Steps 1-6: Detect badges, extract colors, match to sections
-# Step 7: OCR badge text using EasyOCR
-
 import cv2
 import numpy as np
 from typing import List, Dict, Tuple, Optional

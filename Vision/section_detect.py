@@ -1,7 +1,4 @@
 # Vision/section_detect.py
-# Assign cells to sections based on dominant color and connectivity
-# Handles duplicate colors by treating disconnected regions as separate sections
-
 from __future__ import annotations
 import cv2
 import numpy as np

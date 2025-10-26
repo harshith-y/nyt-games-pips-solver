@@ -4,7 +4,7 @@
       "board_index": 1,
       "board_w": 796,
       "board_h": 801,
-      "pitch": 180.0,
+      "pitch": 193.0,
       "offset": [
         0,
         0
@@ -15,14 +15,14 @@
           "row": 0,
           "col": 1,
           "bbox": [
-            180,
+            193,
             0,
-            180,
-            180
+            193,
+            193
           ],
           "center": [
-            270,
-            90
+            289,
+            96
           ],
           "section": 0
         },
@@ -31,14 +31,14 @@
           "row": 0,
           "col": 2,
           "bbox": [
-            360,
+            386,
             0,
-            180,
-            180
+            193,
+            193
           ],
           "center": [
-            450,
-            90
+            482,
+            96
           ],
           "section": 1
         },
@@ -48,13 +48,13 @@
           "col": 0,
           "bbox": [
             0,
-            180,
-            180,
-            180
+            193,
+            193,
+            193
           ],
           "center": [
-            90,
-            270
+            96,
+            289
           ],
           "section": 2
         },
@@ -63,14 +63,14 @@
           "row": 1,
           "col": 1,
           "bbox": [
-            180,
-            180,
-            180,
-            180
+            193,
+            193,
+            193,
+            193
           ],
           "center": [
-            270,
-            270
+            289,
+            289
           ],
           "section": 2
         },
@@ -79,14 +79,14 @@
           "row": 1,
           "col": 2,
           "bbox": [
-            360,
-            180,
-            180,
-            180
+            386,
+            193,
+            193,
+            193
           ],
           "center": [
-            450,
-            270
+            482,
+            289
           ],
           "section": 1
         },
@@ -95,14 +95,14 @@
           "row": 1,
           "col": 3,
           "bbox": [
-            540,
-            180,
-            180,
-            180
+            579,
+            193,
+            193,
+            193
           ],
           "center": [
-            630,
-            270
+            675,
+            289
           ],
           "section": 1
         },
@@ -112,13 +112,13 @@
           "col": 0,
           "bbox": [
             0,
-            360,
-            180,
-            180
+            386,
+            193,
+            193
           ],
           "center": [
-            90,
-            450
+            96,
+            482
           ],
           "section": 2
         },
@@ -127,14 +127,14 @@
           "row": 2,
           "col": 1,
           "bbox": [
-            180,
-            360,
-            180,
-            180
+            193,
+            386,
+            193,
+            193
           ],
           "center": [
-            270,
-            450
+            289,
+            482
           ],
           "section": 3
         },
@@ -143,14 +143,14 @@
           "row": 2,
           "col": 2,
           "bbox": [
-            360,
-            360,
-            180,
-            180
+            386,
+            386,
+            193,
+            193
           ],
           "center": [
-            450,
-            450
+            482,
+            482
           ],
           "section": 3
         },
@@ -159,14 +159,14 @@
           "row": 2,
           "col": 3,
           "bbox": [
-            540,
-            360,
-            180,
-            180
+            579,
+            386,
+            193,
+            193
           ],
           "center": [
-            630,
-            450
+            675,
+            482
           ],
           "section": 3
         },
@@ -175,14 +175,14 @@
           "row": 3,
           "col": 1,
           "bbox": [
-            180,
-            540,
-            180,
-            180
+            193,
+            579,
+            193,
+            193
           ],
           "center": [
-            270,
-            630
+            289,
+            675
           ],
           "section": 4
         },
@@ -191,14 +191,14 @@
           "row": 3,
           "col": 2,
           "bbox": [
-            360,
-            540,
-            180,
-            180
+            386,
+            579,
+            193,
+            193
           ],
           "center": [
-            450,
-            630
+            482,
+            675
           ],
           "section": 5
         }
@@ -217,7 +217,7 @@
           ],
           "color_hex": "#d15609",
           "section_color": "#e9bd8c",
-          "section_id": 5,
+          "section_id": 4,
           "text": "<5"
         },
         {
@@ -270,21 +270,22 @@
         }
       ],
       "debug": {
-        "chosen_pitch": 180,
-        "adaptive_pitch_min": 100,
-        "adaptive_pitch_max": 220,
+        "chosen_pitch": 193,
+        "adaptive_pitch_min": 105,
+        "adaptive_pitch_max": 200,
         "offset_dx": 0,
         "offset_dy": 0,
         "cells": 12,
-        "phase_score": 2160,
+        "phase_score": 2316,
+        "content_score": 359.3271799707725,
         "H": 801,
         "W": 796,
         "pitch_min_ratio": 0.1,
         "pitch_max_ratio": 0.35,
         "absolute_pitch_min": 50,
         "absolute_pitch_max": 500,
-        "practical_pitch_min": 100,
-        "practical_pitch_max": 220,
+        "practical_pitch_min": 105,
+        "practical_pitch_max": 200,
         "core_erode_px": 2,
         "core_frac": 0.6,
         "core_palette_thresh": 0.3,

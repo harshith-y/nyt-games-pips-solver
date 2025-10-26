@@ -5,8 +5,8 @@
 # ==================================================================
 # CONFIGURATION: Easy Toggle
 # ==================================================================
-BATCH_MODE = True  # Set to True to process ALL images in data/samples/
-IMAGE_PATH = "data/samples/IMG_0890.PNG"  # Used when BATCH_MODE = False
+BATCH_MODE = False  # Set to True to process ALL images in data/samples/
+IMAGE_PATH = "data/samples/IMG_0654.PNG"  # Used when BATCH_MODE = False
 OUTPUT_DIR = "data/debug"
 # ==================================================================
 

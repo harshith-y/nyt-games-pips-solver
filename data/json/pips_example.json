@@ -4,7 +4,7 @@
       "board_index": 1,
       "board_w": 530,
       "board_h": 414,
-      "pitch": 122.0,
+      "pitch": 125.0,
       "offset": [
         0,
         0
@@ -15,14 +15,14 @@
           "row": 0,
           "col": 1,
           "bbox": [
-            122,
+            125,
             0,
-            122,
-            122
+            125,
+            125
           ],
           "center": [
-            183,
-            61
+            187,
+            62
           ],
           "section": 0
         },
@@ -31,14 +31,14 @@
           "row": 0,
           "col": 2,
           "bbox": [
-            244,
+            250,
             0,
-            122,
-            122
+            125,
+            125
           ],
           "center": [
-            305,
-            61
+            312,
+            62
           ],
           "section": 1
         },
@@ -48,13 +48,13 @@
           "col": 0,
           "bbox": [
             0,
-            122,
-            122,
-            122
+            125,
+            125,
+            125
           ],
           "center": [
-            61,
-            183
+            62,
+            187
           ],
           "section": 2
         },
@@ -63,14 +63,14 @@
           "row": 1,
           "col": 1,
           "bbox": [
-            122,
-            122,
-            122,
-            122
+            125,
+            125,
+            125,
+            125
           ],
           "center": [
-            183,
-            183
+            187,
+            187
           ],
           "section": 0
         },
@@ -79,14 +79,14 @@
           "row": 1,
           "col": 2,
           "bbox": [
-            244,
-            122,
-            122,
-            122
+            250,
+            125,
+            125,
+            125
           ],
           "center": [
-            305,
-            183
+            312,
+            187
           ],
           "section": 1
         },
@@ -95,14 +95,14 @@
           "row": 1,
           "col": 3,
           "bbox": [
-            366,
-            122,
-            122,
-            122
+            375,
+            125,
+            125,
+            125
           ],
           "center": [
-            427,
-            183
+            437,
+            187
           ],
           "section": 3
         },
@@ -112,13 +112,13 @@
           "col": 0,
           "bbox": [
             0,
-            244,
-            122,
-            122
+            250,
+            125,
+            125
           ],
           "center": [
-            61,
-            305
+            62,
+            312
           ],
           "section": 4
         },
@@ -127,14 +127,14 @@
           "row": 2,
           "col": 1,
           "bbox": [
-            122,
-            244,
-            122,
-            122
+            125,
+            250,
+            125,
+            125
           ],
           "center": [
-            183,
-            305
+            187,
+            312
           ],
           "section": 4
         },
@@ -143,14 +143,14 @@
           "row": 2,
           "col": 2,
           "bbox": [
-            244,
-            244,
-            122,
-            122
+            250,
+            250,
+            125,
+            125
           ],
           "center": [
-            305,
-            305
+            312,
+            312
           ],
           "section": 5
         },
@@ -159,14 +159,14 @@
           "row": 2,
           "col": 3,
           "bbox": [
-            366,
-            244,
-            122,
-            122
+            375,
+            250,
+            125,
+            125
           ],
           "center": [
-            427,
-            305
+            437,
+            312
           ],
           "section": 5
         }
@@ -254,21 +254,22 @@
         }
       ],
       "debug": {
-        "chosen_pitch": 122,
-        "adaptive_pitch_min": 100,
-        "adaptive_pitch_max": 178,
+        "chosen_pitch": 125,
+        "adaptive_pitch_min": 105,
+        "adaptive_pitch_max": 145,
         "offset_dx": 0,
         "offset_dy": 0,
         "cells": 10,
-        "phase_score": 1220,
+        "phase_score": 1250,
+        "content_score": 351.4107860921323,
         "H": 414,
         "W": 530,
         "pitch_min_ratio": 0.1,
         "pitch_max_ratio": 0.35,
         "absolute_pitch_min": 50,
         "absolute_pitch_max": 500,
-        "practical_pitch_min": 100,
-        "practical_pitch_max": 220,
+        "practical_pitch_min": 105,
+        "practical_pitch_max": 200,
         "core_erode_px": 2,
         "core_frac": 0.6,
         "core_palette_thresh": 0.3,

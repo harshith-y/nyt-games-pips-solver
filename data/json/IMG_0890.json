@@ -4,7 +4,7 @@
       "board_index": 1,
       "board_w": 796,
       "board_h": 622,
-      "pitch": 178.0,
+      "pitch": 182.0,
       "offset": [
         0,
         0
@@ -17,12 +17,12 @@
           "bbox": [
             0,
             0,
-            178,
-            178
+            182,
+            182
           ],
           "center": [
-            89,
-            89
+            91,
+            91
           ],
           "section": 0
         },
@@ -31,14 +31,14 @@
           "row": 0,
           "col": 1,
           "bbox": [
-            178,
+            182,
             0,
-            178,
-            178
+            182,
+            182
           ],
           "center": [
-            267,
-            89
+            273,
+            91
           ],
           "section": 0
         },
@@ -47,14 +47,14 @@
           "row": 0,
           "col": 2,
           "bbox": [
-            356,
+            364,
             0,
-            178,
-            178
+            182,
+            182
           ],
           "center": [
-            445,
-            89
+            455,
+            91
           ],
           "section": 1
         },
@@ -63,14 +63,14 @@
           "row": 0,
           "col": 3,
           "bbox": [
-            534,
+            546,
             0,
-            178,
-            178
+            182,
+            182
           ],
           "center": [
-            623,
-            89
+            637,
+            91
           ],
           "section": 1
         },
@@ -80,13 +80,13 @@
           "col": 0,
           "bbox": [
             0,
-            178,
-            178,
-            178
+            182,
+            182,
+            182
           ],
           "center": [
-            89,
-            267
+            91,
+            273
           ],
           "section": 2
         },
@@ -95,14 +95,14 @@
           "row": 1,
           "col": 3,
           "bbox": [
-            534,
-            178,
-            178,
-            178
+            546,
+            182,
+            182,
+            182
           ],
           "center": [
-            623,
-            267
+            637,
+            273
           ],
           "section": 3
         },
@@ -112,13 +112,13 @@
           "col": 0,
           "bbox": [
             0,
-            356,
-            178,
-            178
+            364,
+            182,
+            182
           ],
           "center": [
-            89,
-            445
+            91,
+            455
           ],
           "section": 2
         },
@@ -127,14 +127,14 @@
           "row": 2,
           "col": 1,
           "bbox": [
-            178,
-            356,
-            178,
-            178
+            182,
+            364,
+            182,
+            182
           ],
           "center": [
-            267,
-            445
+            273,
+            455
           ],
           "section": 2
         },
@@ -143,14 +143,14 @@
           "row": 2,
           "col": 2,
           "bbox": [
-            356,
-            356,
-            178,
-            178
+            364,
+            364,
+            182,
+            182
           ],
           "center": [
-            445,
-            445
+            455,
+            455
           ],
           "section": 4
         },
@@ -159,14 +159,14 @@
           "row": 2,
           "col": 3,
           "bbox": [
-            534,
-            356,
-            178,
-            178
+            546,
+            364,
+            182,
+            182
           ],
           "center": [
-            623,
-            445
+            637,
+            455
           ],
           "section": 4
         }
@@ -238,21 +238,22 @@
         }
       ],
       "debug": {
-        "chosen_pitch": 178,
-        "adaptive_pitch_min": 100,
-        "adaptive_pitch_max": 218,
+        "chosen_pitch": 182,
+        "adaptive_pitch_min": 105,
+        "adaptive_pitch_max": 200,
         "offset_dx": 0,
         "offset_dy": 0,
         "cells": 10,
-        "phase_score": 1780,
+        "phase_score": 1820,
+        "content_score": 304.0139213452043,
         "H": 622,
         "W": 796,
         "pitch_min_ratio": 0.1,
         "pitch_max_ratio": 0.35,
         "absolute_pitch_min": 50,
         "absolute_pitch_max": 500,
-        "practical_pitch_min": 100,
-        "practical_pitch_max": 220,
+        "practical_pitch_min": 105,
+        "practical_pitch_max": 200,
         "core_erode_px": 2,
         "core_frac": 0.6,
         "core_palette_thresh": 0.3,
