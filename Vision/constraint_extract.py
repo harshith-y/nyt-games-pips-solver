@@ -322,17 +322,187 @@ def ocr_badge_text_easyocr(badge_roi: np.ndarray, reader, debug: bool = False,
     text = text.replace("S", "5")
     text = text.replace("|", "1")
     
+    # Special case: "<" is often misread "4" (the angled part without crossbar)
+    # Replace standalone "<" with "4" if it appears alone
+    if text.strip() == "<":
+        text = "4"
+        if debug:
+            print(f"    Note: '<' symbol detected, likely misread '4'")
+    
+    # Special case: ">" might also be misread "4" in some fonts
+    # (less common, but possible if image is mirrored or rotated)
+    if text.strip() == ">":
+        text = "4"
+        if debug:
+            print(f"    Note: '>' symbol detected, likely misread '4'")
+    
+    # Special case: "?" or "???" means unrecognized/low quality
+    # Keep as-is for now (could be legitimate uncertainty marker)
+    if "?" in text and debug:
+        print(f"    Warning: Text contains '?' - OCR uncertain or low quality")
+    
+    # Special case: "not equals" symbol often misread as numbers like "72", "44", "7/2"
+    # Heuristic: Any number > 50 is likely OCR error for "≠"
+    # (Valid constraints are 0-40 max, since multi-cell sums rarely exceed that)
+    if text.replace(">", "").replace("<", "").isdigit():
+        num = int(text.replace(">", "").replace("<", ""))
+        if num > 50:
+            text = "≠"
+            if debug:
+                print(f"    Note: Number {num} too large for valid constraint, assuming '≠'")
+    
+    # Also catch common OCR variations of "≠"
+    # "44" = two horizontal lines seen as two 4's
+    # "72" = slash + lines misread
+    # "7/2", "Z2", etc. = partial recognition of the slash
+    if text in ["44", "7/2", "7Z", "7z", "Z2", "7l", "7I", "/=", "4/4"]:
+        text = "≠"
+        if debug:
+            print(f"    Note: Detected common '≠' OCR variation '{text}', correcting")
+    
+    # Special case: "7" might be "≠" if the badge has strong horizontal line patterns
+    # The "≠" symbol has TWO prominent horizontal lines
+    # A real "7" has one angled line and one horizontal line
+    if text == "7":
+        # Analyze the preprocessed image for horizontal line dominance
+        h, w = processed.shape if len(processed.shape) == 2 else processed.shape[:2]
+        
+        if h > 20 and w > 20:
+            # Sample three horizontal strips (top third, middle, bottom third)
+            top_strip = processed[int(h*0.25):int(h*0.35), :]
+            mid_strip = processed[int(h*0.45):int(h*0.55), :]
+            bot_strip = processed[int(h*0.65):int(h*0.75), :]
+            
+            # Count bright pixels (white = foreground) in each strip
+            top_bright = np.mean(top_strip > 127)
+            mid_bright = np.mean(mid_strip > 127)
+            bot_bright = np.mean(bot_strip > 127)
+            
+            # "≠" has bright pixels in top AND bottom (two horizontal lines)
+            # "7" has bright pixels mainly in top (one horizontal line)
+            has_top_line = top_bright > 0.3
+            has_bot_line = bot_bright > 0.3
+            
+            # If BOTH top and bottom have strong horizontal presence, it's likely "≠"
+            if has_top_line and has_bot_line:
+                text = "≠"
+                if debug:
+                    print(f"    Note: '7' has two horizontal lines (top={top_bright:.2f}, bot={bot_bright:.2f}), likely '≠'")
+    
+    # Special case: "4" might be "≠" if the badge has strong horizontal line patterns
+    # The "≠" symbol has TWO prominent horizontal lines that are SYMMETRIC
+    # A real "4" has one strong crossbar in middle, with minimal top/bottom content
+    if text == "4":
+        # Analyze the preprocessed image for horizontal line dominance
+        h, w = processed.shape if len(processed.shape) == 2 else processed.shape[:2]
+        
+        if h > 20 and w > 20:
+            # Sample FIVE horizontal strips for more precision
+            top_strip = processed[int(h*0.20):int(h*0.30), :]      # Top region
+            upper_mid = processed[int(h*0.35):int(h*0.45), :]      # Upper middle
+            mid_strip = processed[int(h*0.45):int(h*0.55), :]      # True middle (crossbar)
+            lower_mid = processed[int(h*0.55):int(h*0.65), :]      # Lower middle
+            bot_strip = processed[int(h*0.70):int(h*0.80), :]      # Bottom region
+            
+            # Count bright pixels (white = foreground) in each strip
+            top_bright = np.mean(top_strip > 127)
+            upper_mid_bright = np.mean(upper_mid > 127)
+            mid_bright = np.mean(mid_strip > 127)
+            lower_mid_bright = np.mean(lower_mid > 127)
+            bot_bright = np.mean(bot_strip > 127)
+            
+            # NEW: Sample vertical strips to detect vertical strokes in "4"
+            left_strip = processed[:, 0:int(w*0.3)]  # Left vertical
+            right_strip = processed[:, int(w*0.7):]  # Right vertical
+            
+            left_vert_bright = np.mean(left_strip > 127)
+            right_vert_bright = np.mean(right_strip > 127)
+            
+            # Key differences between "4" and "≠":
+            # REAL "4":
+            #   - Middle (crossbar) is STRONGEST region (>55%)
+            #   - Top/bottom are WEAK (<42%)
+            #   - Has LEFT vertical stroke (>35% brightness)
+            #   - Has RIGHT vertical stroke (>25% brightness)
+            #   - Clear peak in the middle
+            # 
+            # "≠" SYMBOL:
+            #   - Top and/or bottom are STRONG (>45%)
+            #   - Top and bottom are REASONABLY SYMMETRIC (diff <20%)
+            #   - Middle is WEAK (<35%)
+            #   - Vertical brightness from diagonal only (not structural verticals)
+            #   - Extremes dominate over middle
+            
+            # Condition 1: At least ONE extreme is very strong (relaxed from both)
+            has_very_strong_top = top_bright > 0.45
+            has_very_strong_bot = bot_bright > 0.45
+            has_strong_extreme = has_very_strong_top or has_very_strong_bot
+            
+            # Condition 2: Extremes reasonably symmetric (relaxed: 20% from 10%)
+            reasonably_similar_ends = abs(top_bright - bot_bright) < 0.20
+            
+            # Condition 3: Middle MUCH weaker (keep at 0.08)
+            middle_much_weaker = mid_bright < min(top_bright, bot_bright) - 0.08
+            
+            # Condition 4: NO strong middle peak
+            middle_not_dominant = mid_bright < max(top_bright, bot_bright, upper_mid_bright, lower_mid_bright)
+            
+            # Condition 5: Horizontal line continuity
+            top_line_continuous = np.std(np.mean(top_strip > 127, axis=0)) < 0.3
+            bot_line_continuous = np.std(np.mean(bot_strip > 127, axis=0)) < 0.3
+            
+            # Condition 6: Check if verticals are TRUE structural verticals (not just diagonal)
+            # Real "4" has BOTH strong left (>35%) AND right (>25%)
+            # "≠" may have brightness from diagonal (<35% on sides), but not true structural verticals
+            has_structural_verticals = (left_vert_bright > 0.35) and (right_vert_bright > 0.25)
+            no_structural_verticals = not has_structural_verticals
+            
+            # Condition 7: Middle is WEAK (not just weaker)
+            middle_is_weak = mid_bright < 0.35
+            
+            # Condition 8: At least one extreme DOMINATES middle significantly
+            # (relaxed: only need ONE to dominate, not both)
+            at_least_one_dominates = (top_bright > mid_bright + 0.15) or (bot_bright > mid_bright + 0.15)
+            
+            # ALL 8 conditions must be true for "≠"
+            # BUT: Add bypass for VERY clear "≠" patterns (extremely weak middle + strong domination)
+            # This catches "≠" where diagonal creates vertical brightness
+            extremely_weak_middle = mid_bright < 0.22
+            very_strong_domination = (top_bright > mid_bright + 0.25) or (bot_bright > mid_bright + 0.25)
+            
+            # Bypass path: If middle is EXTREMELY weak and extremes STRONGLY dominate, it's clearly "≠"
+            if extremely_weak_middle and very_strong_domination and has_strong_extreme and reasonably_similar_ends:
+                text = "≠"
+                if debug:
+                    print(f"    Note: '4' has EXTREMELY weak middle pattern (mid={mid_bright:.2f}, top={top_bright:.2f}, bot={bot_bright:.2f}) → '≠'")
+            # Full check path: All conditions including vertical check
+            elif (has_strong_extreme and reasonably_similar_ends and 
+                middle_much_weaker and middle_not_dominant and 
+                top_line_continuous and bot_line_continuous and 
+                no_structural_verticals and middle_is_weak and 
+                at_least_one_dominates):
+                text = "≠"
+                if debug:
+                    print(f"    Note: '4' matches '≠' pattern: top={top_bright:.2f}, mid={mid_bright:.2f}, bot={bot_bright:.2f}, vert_L={left_vert_bright:.2f}, vert_R={right_vert_bright:.2f}")
+            elif debug and (has_very_strong_top or has_very_strong_bot or top_bright > 0.35 or bot_bright > 0.35):
+                # Debug: show why we didn't convert
+                print(f"    Note: '4' analysis: top={top_bright:.2f}, mid={mid_bright:.2f}, bot={bot_bright:.2f}")
+                print(f"          Vertical: left={left_vert_bright:.2f}, right={right_vert_bright:.2f}")
+                print(f"          Bypass check: extreme_weak={extremely_weak_middle} (mid<0.22), very_strong_dom={very_strong_domination}")
+                print(f"          Full check: strong_extreme={has_strong_extreme}, sym<0.20={reasonably_similar_ends}, mid_weak={middle_is_weak}")
+                print(f"          no_struct_vert={no_structural_verticals} (need L>0.35 AND R>0.25), dominates={at_least_one_dominates}")
+                print(f"          Kept as '4' (not all conditions met)")
+
     if debug:
         print(f"    FINAL Result: '{text}' (confidence: {confidence:.2f})")
-    
+
     return text
 
-
 def detect_badges(board_rgb: np.ndarray,
-                  saturation_threshold: int = 100,
-                  min_area: int = 800,
-                  max_area: int = 5000,
-                  aspect_ratio_range: Tuple[float, float] = (0.7, 1.3),
+                  saturation_threshold: int = 120,  # Raised to 120 for better separation
+                  min_area: int = None,  # Will be calculated adaptively
+                  max_area: int = None,  # Will be calculated adaptively
+                  aspect_ratio_range: Tuple[float, float] = (0.6, 1.5),  # Wider range (was 0.7-1.3)
                   debug: bool = False) -> List[Badge]:
     """
     Detect constraint badges in the board image (Steps 1-4).
@@ -340,14 +510,24 @@ def detect_badges(board_rgb: np.ndarray,
     Args:
         board_rgb: RGB image of the board
         saturation_threshold: Min saturation to consider as badge (0-255)
-        min_area: Minimum badge area in pixels
-        max_area: Maximum badge area in pixels
+        min_area: Minimum badge area in pixels (auto-calculated if None)
+        max_area: Maximum badge area in pixels (auto-calculated if None)
         aspect_ratio_range: (min, max) aspect ratio for badge bounding box
         debug: If True, print debug information
     
     Returns:
         List of detected Badge objects
     """
+    # Calculate adaptive area thresholds based on board size
+    H, W = board_rgb.shape[:2]
+    board_area = H * W
+    
+    # Badges are typically 0.2% to 4% of board area (widened range)
+    if min_area is None:
+        min_area = int(board_area * 0.002)  # Lowered from 0.003 to 0.002
+    if max_area is None:
+        max_area = int(board_area * 0.1)   # Increased from 0.03 to 0.04
+    
     # Step 1: Convert to HSV and filter by saturation
     hsv = cv2.cvtColor(board_rgb, cv2.COLOR_RGB2HSV)
     saturation = hsv[:, :, 1]
@@ -359,6 +539,8 @@ def detect_badges(board_rgb: np.ndarray,
         print(f"\n{'='*70}")
         print(f"DEBUG: Badge Detection")
         print(f"{'='*70}")
+        print(f"  Board size: {W}x{H} ({board_area} pixels)")
+        print(f"  Adaptive area range: {min_area} - {max_area} pixels")
         print(f"  Saturation threshold: {saturation_threshold}")
         print(f"  Mask pixels above threshold: {np.sum(mask > 0)}")
     
@@ -367,6 +549,9 @@ def detect_badges(board_rgb: np.ndarray,
     
     if debug:
         print(f"  Total contours found: {len(contours)}")
+        # Show area distribution
+        areas = sorted([cv2.contourArea(c) for c in contours], reverse=True)
+        print(f"  Top 10 contour areas: {[int(a) for a in areas[:10]]}")
     
     # Step 3: Filter by size and shape
     badges = []

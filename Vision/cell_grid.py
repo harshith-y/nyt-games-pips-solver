@@ -507,8 +507,8 @@ def detect_cells(
             # NO autocorr peaks found - use upper-half bias as tiebreaker
             # This helps when autocorr fails: prefer larger pitches (less likely to be sub-cells)
             if p > pitch_mid:
-                peak_bonus = 1.1  # Small bias toward upper half
-                peak_annotation = "×1.1 upper"
+                peak_bonus = 1.05  # Small bias toward upper half
+                peak_annotation = "×1.05 upper"
         
         score = score * peak_bonus
         

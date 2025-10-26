@@ -123,7 +123,7 @@ def _build_adjacency_graph(cells: List[Cell]) -> Dict[int, Set[int]]:
 def _connected_components_with_tolerance(cells: List[Cell], 
                                         adjacency: Dict[int, Set[int]],
                                         color_map: Dict[int, Tuple[int, int, int]],
-                                        tolerance: float = 15.0) -> Dict[int, int]:
+                                        tolerance: float = 0.0) -> Dict[int, int]:
     """
     Perform connected components analysis based on color and adjacency.
     Cells with similar colors (within tolerance) that are connected belong to the same section.
@@ -178,7 +178,7 @@ def _connected_components_with_tolerance(cells: List[Cell],
 def assign_sections(grid: GridResult, 
                    board_rgb: np.ndarray,
                    palette_hex: List[str],
-                   color_tolerance: float = 15.0,
+                   color_tolerance: float = 0.0,
                    debug: bool = False) -> GridResult:
     """
     Assign each cell to a section based on dominant color and connectivity.

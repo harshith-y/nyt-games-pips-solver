@@ -2,6 +2,14 @@
 # Driver: Phase-1 crop → Phase-2 cell detection → Phase-3 section detection → Domino + Pip detection
 # Saves overlays and a JSON summary.
 
+# ==================================================================
+# CONFIGURATION: Easy Toggle
+# ==================================================================
+BATCH_MODE = True  # Set to True to process ALL images in data/samples/
+IMAGE_PATH = "data/samples/IMG_0890.PNG"  # Used when BATCH_MODE = False
+OUTPUT_DIR = "data/debug"
+# ==================================================================
+
 import os, json, cv2
 import numpy as np
 
@@ -10,9 +18,6 @@ from Vision.pip_detect import detect_all_pips, visualize_pip_counts  # Pip detec
 from Vision.cell_grid import detect_cells, CellDetectConfig  # Phase 2
 from Vision.section_detect import assign_sections, visualize_sections  # Phase 3
 from Vision.constraint_extract import extract_constraints, visualize_badges  # Phase 4
-
-IMAGE_PATH = "data/samples/pips_example1.PNG"
-OUTPUT_DIR = "data/debug"
 
 # Your manual palette (INCLUDE beige so undotted beige sections are detected)
 PALETTE_INCLUDE = [
@@ -37,16 +42,23 @@ def draw_cells(rgb, cells, pitch):
         cv2.circle(bgr, c.center, max(1, int(round(pitch*0.06))), (0, 0, 255), -1)
     return bgr
 
-def main():
+def process_image(image_path: str, output_dir: str = OUTPUT_DIR):
+    """
+    Process a single image through the vision pipeline.
+    
+    Args:
+        image_path: Path to the input image
+        output_dir: Base directory for output (creates subfolder per image)
+    """
     # Extract image name without extension for subfolder
-    image_basename = os.path.splitext(os.path.basename(IMAGE_PATH))[0]
-    image_output_dir = os.path.join(OUTPUT_DIR, image_basename)
+    image_basename = os.path.splitext(os.path.basename(image_path))[0]
+    image_output_dir = os.path.join(output_dir, image_basename)
     ensure_dir(image_output_dir)
 
     print(f"\n{'='*70}")
     print(f"Starting NYT Pips Vision Pipeline")
     print(f"{'='*70}")
-    print(f"Input: {IMAGE_PATH}")
+    print(f"Input: {image_path}")
     print(f"Output directory: {image_output_dir}")
 
     # Phase 0: Detect dominoes in the tray
@@ -54,19 +66,19 @@ def main():
     print(f"Phase 0: Domino Detection")
     print(f"{'='*70}")
     
-    domino_boxes = detect_dominoes(IMAGE_PATH)
+    domino_boxes = detect_dominoes(image_path)
     print(f"Detected {len(domino_boxes)} dominoes in the tray")
     
     # Phase 0.5: Detect pips on each domino
     print(f"\nDetecting pips on dominoes...")
-    pip_counts = detect_all_pips(IMAGE_PATH, domino_boxes, debug=False)
+    pip_counts = detect_all_pips(image_path, domino_boxes, debug=False)
     
     # Show pip counts
     for i, (left, right) in enumerate(pip_counts):
         print(f"  Domino {i+1}: [{left}|{right}]")
     
     # Save domino + pip visualization
-    domino_vis = visualize_pip_counts(IMAGE_PATH, domino_boxes, pip_counts)
+    domino_vis = visualize_pip_counts(image_path, domino_boxes, pip_counts)
     out_dominoes = os.path.join(image_output_dir, "dominoes.png")
     cv2.imwrite(out_dominoes, domino_vis)
     print(f"[output] Domino + pip visualization: {out_dominoes}")
@@ -76,7 +88,7 @@ def main():
     print(f"Phase 1: Board Cropping")
     print(f"{'='*70}")
     
-    crops, boxes = crop_puzzle_boards(IMAGE_PATH, mode="separate")  # returns [RGB np.uint8], [(x,y,w,h)]
+    crops, boxes = crop_puzzle_boards(image_path, mode="separate")  # returns [RGB np.uint8], [(x,y,w,h)]
     print(f"Detected {len(crops)} puzzle board(s)")
     
     all_boards = []
@@ -95,7 +107,7 @@ def main():
             grid, 
             crop, 
             PALETTE_INCLUDE, 
-            color_tolerance=15.0,  # Adjust if needed
+            color_tolerance=5.0,  # Lowered from 15.0 to prevent merging distinct sections
             debug=True
         )
 
@@ -163,15 +175,29 @@ def main():
         ]
     }
 
-    # Save JSON
-    out_json = os.path.join(image_output_dir, "phase2_cells.json")
-    with open(out_json, "w") as f:
+    # Save JSON to two locations:
+    # 1. Debug folder (with visualizations): data/debug/IMG_0904/IMG_0904.json
+    # 2. Dedicated JSON folder (for solver): data/json/IMG_0904.json
+    
+    json_filename = f"{image_basename}.json"
+    
+    # Location 1: Debug folder (with images)
+    out_json_debug = os.path.join(image_output_dir, json_filename)
+    with open(out_json_debug, "w") as f:
+        json.dump(result, f, indent=2)
+    
+    # Location 2: Dedicated JSON folder (easy access for solver)
+    json_folder = "data/json"
+    ensure_dir(json_folder)
+    out_json_main = os.path.join(json_folder, json_filename)
+    with open(out_json_main, "w") as f:
         json.dump(result, f, indent=2)
     
     print(f"\n{'='*70}")
     print(f"Pipeline Complete")
     print(f"{'='*70}")
-    print(f"[output] JSON: {out_json}")
+    print(f"[output] JSON (debug): {out_json_debug}")
+    print(f"[output] JSON (main):  {out_json_main}")
     print(f"[output] Dominoes: {out_dominoes} ({len(domino_boxes)} detected)")
     for i in range(len(crops)):
         print(f"[output] Board {i+1} cell grid: {os.path.join(image_output_dir, f'board{i+1}_cells.png')}")
@@ -179,4 +205,67 @@ def main():
         print(f"[output] Board {i+1} badges: {os.path.join(image_output_dir, f'board{i+1}_badges.png')}")
 
 if __name__ == "__main__":
-    main()
+    import sys
+    from pathlib import Path
+    
+    if BATCH_MODE:
+        # Batch mode: process all images in samples folder
+        samples_dir = "data/samples"
+        output_dir = OUTPUT_DIR
+        
+        print("\n" + "="*70)
+        print("BATCH PROCESSING MODE")
+        print("="*70)
+        
+        samples_path = Path(samples_dir)
+        if not samples_path.exists():
+            print(f"Error: Directory not found: {samples_dir}")
+            sys.exit(1)
+        
+        # Find all images
+        image_extensions = {'.png', '.jpg', '.jpeg', '.PNG', '.JPG', '.JPEG'}
+        image_files = [f for f in samples_path.iterdir() 
+                      if f.is_file() and f.suffix in image_extensions]
+        
+        if not image_files:
+            print(f"No images found in {samples_dir}")
+            sys.exit(1)
+        
+        print(f"Found {len(image_files)} images to process\n")
+        
+        results = {'success': [], 'failed': []}
+        
+        for i, image_path in enumerate(sorted(image_files), 1):
+            print(f"\n{'='*70}")
+            print(f"[{i}/{len(image_files)}] Processing: {image_path.name}")
+            print(f"{'='*70}")
+            
+            try:
+                process_image(str(image_path), output_dir)
+                results['success'].append(image_path.name)
+            except Exception as e:
+                print(f"\n❌ ERROR: {e}")
+                results['failed'].append((image_path.name, str(e)))
+        
+        # Summary
+        print("\n" + "="*70)
+        print("BATCH PROCESSING COMPLETE")
+        print("="*70)
+        print(f"\n✅ Successful: {len(results['success'])}/{len(image_files)}")
+        for name in results['success']:
+            print(f"   - {name}")
+        
+        if results['failed']:
+            print(f"\n❌ Failed: {len(results['failed'])}/{len(image_files)}")
+            for name, error in results['failed']:
+                print(f"   - {name}: {error}")
+        
+        print(f"\nResults saved to: {output_dir}/")
+    
+    elif len(sys.argv) > 1:
+        # Command line argument provided
+        process_image(sys.argv[1], OUTPUT_DIR)
+    
+    else:
+        # Default: process single IMAGE_PATH
+        process_image(IMAGE_PATH, OUTPUT_DIR)

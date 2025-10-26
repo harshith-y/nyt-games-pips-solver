@@ -1,0 +1,332 @@
+{
+  "boards": [
+    {
+      "board_index": 1,
+      "board_w": 796,
+      "board_h": 622,
+      "pitch": 178.0,
+      "offset": [
+        0,
+        0
+      ],
+      "cells": [
+        {
+          "id": 0,
+          "row": 0,
+          "col": 0,
+          "bbox": [
+            0,
+            0,
+            178,
+            178
+          ],
+          "center": [
+            89,
+            89
+          ],
+          "section": 0
+        },
+        {
+          "id": 1,
+          "row": 0,
+          "col": 1,
+          "bbox": [
+            178,
+            0,
+            178,
+            178
+          ],
+          "center": [
+            267,
+            89
+          ],
+          "section": 0
+        },
+        {
+          "id": 2,
+          "row": 0,
+          "col": 2,
+          "bbox": [
+            356,
+            0,
+            178,
+            178
+          ],
+          "center": [
+            445,
+            89
+          ],
+          "section": 1
+        },
+        {
+          "id": 3,
+          "row": 0,
+          "col": 3,
+          "bbox": [
+            534,
+            0,
+            178,
+            178
+          ],
+          "center": [
+            623,
+            89
+          ],
+          "section": 1
+        },
+        {
+          "id": 4,
+          "row": 1,
+          "col": 0,
+          "bbox": [
+            0,
+            178,
+            178,
+            178
+          ],
+          "center": [
+            89,
+            267
+          ],
+          "section": 2
+        },
+        {
+          "id": 5,
+          "row": 1,
+          "col": 3,
+          "bbox": [
+            534,
+            178,
+            178,
+            178
+          ],
+          "center": [
+            623,
+            267
+          ],
+          "section": 3
+        },
+        {
+          "id": 6,
+          "row": 2,
+          "col": 0,
+          "bbox": [
+            0,
+            356,
+            178,
+            178
+          ],
+          "center": [
+            89,
+            445
+          ],
+          "section": 2
+        },
+        {
+          "id": 7,
+          "row": 2,
+          "col": 1,
+          "bbox": [
+            178,
+            356,
+            178,
+            178
+          ],
+          "center": [
+            267,
+            445
+          ],
+          "section": 2
+        },
+        {
+          "id": 8,
+          "row": 2,
+          "col": 2,
+          "bbox": [
+            356,
+            356,
+            178,
+            178
+          ],
+          "center": [
+            445,
+            445
+          ],
+          "section": 4
+        },
+        {
+          "id": 9,
+          "row": 2,
+          "col": 3,
+          "bbox": [
+            534,
+            356,
+            178,
+            178
+          ],
+          "center": [
+            623,
+            445
+          ],
+          "section": 4
+        }
+      ],
+      "badges": [
+        {
+          "bbox": [
+            655,
+            469,
+            141,
+            153
+          ],
+          "center": [
+            725,
+            545
+          ],
+          "color_hex": "#d15609",
+          "section_color": "#e9bd8c",
+          "section_id": 4,
+          "text": "4"
+        },
+        {
+          "bbox": [
+            296,
+            469,
+            141,
+            153
+          ],
+          "center": [
+            366,
+            545
+          ],
+          "color_hex": "#008293",
+          "section_color": "#9dbfc1",
+          "section_id": 2,
+          "text": "="
+        },
+        {
+          "bbox": [
+            296,
+            111,
+            140,
+            151
+          ],
+          "center": [
+            366,
+            186
+          ],
+          "color_hex": "#9251ca",
+          "section_color": "#c3a2bf",
+          "section_id": 1,
+          "text": "<2"
+        },
+        {
+          "bbox": [
+            655,
+            110,
+            141,
+            153
+          ],
+          "center": [
+            725,
+            186
+          ],
+          "color_hex": "#db137a",
+          "section_color": "#e89fae",
+          "section_id": 3,
+          "text": "5"
+        }
+      ],
+      "debug": {
+        "chosen_pitch": 178,
+        "adaptive_pitch_min": 100,
+        "adaptive_pitch_max": 218,
+        "offset_dx": 0,
+        "offset_dy": 0,
+        "cells": 10,
+        "phase_score": 1780,
+        "H": 622,
+        "W": 796,
+        "pitch_min_ratio": 0.1,
+        "pitch_max_ratio": 0.35,
+        "absolute_pitch_min": 50,
+        "absolute_pitch_max": 500,
+        "practical_pitch_min": 100,
+        "practical_pitch_max": 220,
+        "core_erode_px": 2,
+        "core_frac": 0.6,
+        "core_palette_thresh": 0.3,
+        "overlap_thresh": 0.65,
+        "void_max": 0.1,
+        "fine_phase_steps": [
+          4,
+          2,
+          1
+        ],
+        "hsv_s_min": 22,
+        "hsv_v_min": 115,
+        "use_hsv_fallback_in_placeable": true,
+        "delta_e_core": 20.0,
+        "delta_e_placeable": 22.0,
+        "num_sections": 5
+      }
+    }
+  ],
+  "dominoes": [
+    {
+      "id": 0,
+      "bbox": [
+        96,
+        2182,
+        224,
+        116
+      ],
+      "pips_left": 1,
+      "pips_right": 3
+    },
+    {
+      "id": 1,
+      "bbox": [
+        348,
+        2182,
+        224,
+        116
+      ],
+      "pips_left": 0,
+      "pips_right": 0
+    },
+    {
+      "id": 2,
+      "bbox": [
+        600,
+        2182,
+        224,
+        116
+      ],
+      "pips_left": 0,
+      "pips_right": 1
+    },
+    {
+      "id": 3,
+      "bbox": [
+        852,
+        2182,
+        224,
+        116
+      ],
+      "pips_left": 2,
+      "pips_right": 0
+    },
+    {
+      "id": 4,
+      "bbox": [
+        474,
+        2320,
+        224,
+        116
+      ],
+      "pips_left": 2,
+      "pips_right": 2
+    }
+  ]
+}

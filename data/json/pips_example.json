@@ -1,0 +1,348 @@
+{
+  "boards": [
+    {
+      "board_index": 1,
+      "board_w": 530,
+      "board_h": 414,
+      "pitch": 122.0,
+      "offset": [
+        0,
+        0
+      ],
+      "cells": [
+        {
+          "id": 0,
+          "row": 0,
+          "col": 1,
+          "bbox": [
+            122,
+            0,
+            122,
+            122
+          ],
+          "center": [
+            183,
+            61
+          ],
+          "section": 0
+        },
+        {
+          "id": 1,
+          "row": 0,
+          "col": 2,
+          "bbox": [
+            244,
+            0,
+            122,
+            122
+          ],
+          "center": [
+            305,
+            61
+          ],
+          "section": 1
+        },
+        {
+          "id": 2,
+          "row": 1,
+          "col": 0,
+          "bbox": [
+            0,
+            122,
+            122,
+            122
+          ],
+          "center": [
+            61,
+            183
+          ],
+          "section": 2
+        },
+        {
+          "id": 3,
+          "row": 1,
+          "col": 1,
+          "bbox": [
+            122,
+            122,
+            122,
+            122
+          ],
+          "center": [
+            183,
+            183
+          ],
+          "section": 0
+        },
+        {
+          "id": 4,
+          "row": 1,
+          "col": 2,
+          "bbox": [
+            244,
+            122,
+            122,
+            122
+          ],
+          "center": [
+            305,
+            183
+          ],
+          "section": 1
+        },
+        {
+          "id": 5,
+          "row": 1,
+          "col": 3,
+          "bbox": [
+            366,
+            122,
+            122,
+            122
+          ],
+          "center": [
+            427,
+            183
+          ],
+          "section": 3
+        },
+        {
+          "id": 6,
+          "row": 2,
+          "col": 0,
+          "bbox": [
+            0,
+            244,
+            122,
+            122
+          ],
+          "center": [
+            61,
+            305
+          ],
+          "section": 4
+        },
+        {
+          "id": 7,
+          "row": 2,
+          "col": 1,
+          "bbox": [
+            122,
+            244,
+            122,
+            122
+          ],
+          "center": [
+            183,
+            305
+          ],
+          "section": 4
+        },
+        {
+          "id": 8,
+          "row": 2,
+          "col": 2,
+          "bbox": [
+            244,
+            244,
+            122,
+            122
+          ],
+          "center": [
+            305,
+            305
+          ],
+          "section": 5
+        },
+        {
+          "id": 9,
+          "row": 2,
+          "col": 3,
+          "bbox": [
+            366,
+            244,
+            122,
+            122
+          ],
+          "center": [
+            427,
+            305
+          ],
+          "section": 5
+        }
+      ],
+      "badges": [
+        {
+          "bbox": [
+            430,
+            312,
+            100,
+            102
+          ],
+          "center": [
+            480,
+            363
+          ],
+          "color_hex": "#474eaa",
+          "section_color": "#b2a5bf",
+          "section_id": 5,
+          "text": "10"
+        },
+        {
+          "bbox": [
+            191,
+            312,
+            108,
+            102
+          ],
+          "center": [
+            245,
+            363
+          ],
+          "color_hex": "#c15d27",
+          "section_color": "#e9bd8c",
+          "section_id": 4,
+          "text": "="
+        },
+        {
+          "bbox": [
+            430,
+            192,
+            100,
+            106
+          ],
+          "center": [
+            480,
+            245
+          ],
+          "color_hex": "#388091",
+          "section_color": "",
+          "section_id": 3,
+          "text": "6"
+        },
+        {
+          "bbox": [
+            312,
+            191,
+            106,
+            104
+          ],
+          "center": [
+            365,
+            243
+          ],
+          "color_hex": "#c83079",
+          "section_color": "#e89fae",
+          "section_id": 1,
+          "text": "2"
+        },
+        {
+          "bbox": [
+            191,
+            191,
+            108,
+            107
+          ],
+          "center": [
+            245,
+            244
+          ],
+          "color_hex": "#8954c2",
+          "section_color": "#c3a2bf",
+          "section_id": 0,
+          "text": "12"
+        }
+      ],
+      "debug": {
+        "chosen_pitch": 122,
+        "adaptive_pitch_min": 100,
+        "adaptive_pitch_max": 178,
+        "offset_dx": 0,
+        "offset_dy": 0,
+        "cells": 10,
+        "phase_score": 1220,
+        "H": 414,
+        "W": 530,
+        "pitch_min_ratio": 0.1,
+        "pitch_max_ratio": 0.35,
+        "absolute_pitch_min": 50,
+        "absolute_pitch_max": 500,
+        "practical_pitch_min": 100,
+        "practical_pitch_max": 220,
+        "core_erode_px": 2,
+        "core_frac": 0.6,
+        "core_palette_thresh": 0.3,
+        "overlap_thresh": 0.65,
+        "void_max": 0.1,
+        "fine_phase_steps": [
+          4,
+          2,
+          1
+        ],
+        "hsv_s_min": 22,
+        "hsv_v_min": 115,
+        "use_hsv_fallback_in_placeable": true,
+        "delta_e_core": 20.0,
+        "delta_e_placeable": 22.0,
+        "num_sections": 6
+      }
+    }
+  ],
+  "dominoes": [
+    {
+      "id": 0,
+      "bbox": [
+        1099,
+        1165,
+        150,
+        78
+      ],
+      "pips_left": 4,
+      "pips_right": 0
+    },
+    {
+      "id": 1,
+      "bbox": [
+        1267,
+        1165,
+        150,
+        78
+      ],
+      "pips_left": 4,
+      "pips_right": 6
+    },
+    {
+      "id": 2,
+      "bbox": [
+        1435,
+        1165,
+        150,
+        78
+      ],
+      "pips_left": 2,
+      "pips_right": 6
+    },
+    {
+      "id": 3,
+      "bbox": [
+        1603,
+        1165,
+        150,
+        78
+      ],
+      "pips_left": 6,
+      "pips_right": 6
+    },
+    {
+      "id": 4,
+      "bbox": [
+        1351,
+        1257,
+        150,
+        78
+      ],
+      "pips_left": 4,
+      "pips_right": 5
+    }
+  ]
+}
