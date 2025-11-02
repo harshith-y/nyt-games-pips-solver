@@ -665,7 +665,7 @@
           ],
           "color_hex": "#008293",
           "section_color": "#9dbfc1",
-          "section_id": 5,
+          "section_id": 4,
           "text": "12"
         },
         {
@@ -697,7 +697,7 @@
         "H": 640,
         "W": 1103,
         "pitch_min_ratio": 0.1,
-        "pitch_max_ratio": 0.35,
+        "pitch_max_ratio": 0.45,
         "absolute_pitch_min": 50,
         "absolute_pitch_max": 500,
         "practical_pitch_min": 105,

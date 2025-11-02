@@ -361,7 +361,7 @@
         "H": 980,
         "W": 796,
         "pitch_min_ratio": 0.1,
-        "pitch_max_ratio": 0.35,
+        "pitch_max_ratio": 0.45,
         "absolute_pitch_min": 50,
         "absolute_pitch_max": 500,
         "practical_pitch_min": 105,

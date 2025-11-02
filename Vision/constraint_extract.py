@@ -628,100 +628,48 @@ def assign_badge_to_section(badge: Badge,
                             grid: GridResult,
                             board_rgb: np.ndarray,
                             already_assigned_sections: set,
-                            search_distance: int = 100) -> Optional[int]:
+                            diagonal_distance: int = 50) -> Optional[int]:
     """
     Find which section this badge belongs to (Step 6).
-    Badges are placed on the RIGHT or BOTTOM edge of their section.
-    So we search LEFT and UP from the badge position.
-    
-    CRITICAL: Each section can only have ONE badge!
+    Badges are placed diagonally down-right from their section.
+    So we search diagonally up-left (northwest) from the badge.
     
     Args:
         badge: Badge object
         grid: GridResult with cells and section assignments
-        board_rgb: RGB image to extract section colors if needed
+        board_rgb: RGB image (not used in this approach)
         already_assigned_sections: Set of section IDs that already have badges
-        search_distance: How far left/up to search (pixels)
+        diagonal_distance: How far diagonally to search (pixels)
     
     Returns:
         Section ID, or None if no match found
     """
     badge_x, badge_y = badge.center
     
-    # Build section info: section_id -> {cells, bbox}
-    sections = {}
+    # Look diagonally northwest (up and left)
+    # Search point is approximately diagonal_distance pixels in both directions
+    search_x = badge_x - diagonal_distance
+    search_y = badge_y - diagonal_distance
+    
+    # Find which cell is at or near this search point
+    min_dist = float('inf')
+    closest_cell = None
+    
     for cell in grid.cells:
-        if cell.section not in sections:
-            sections[cell.section] = {
-                'cells': [],
-                'min_x': float('inf'),
-                'max_x': float('-inf'),
-                'min_y': float('inf'),
-                'max_y': float('-inf')
-            }
-        sections[cell.section]['cells'].append(cell)
-        
-        # Update section bounding box
         cx, cy = cell.center
-        sections[cell.section]['min_x'] = min(sections[cell.section]['min_x'], cx - cell.bbox[2]//2)
-        sections[cell.section]['max_x'] = max(sections[cell.section]['max_x'], cx + cell.bbox[2]//2)
-        sections[cell.section]['min_y'] = min(sections[cell.section]['min_y'], cy - cell.bbox[3]//2)
-        sections[cell.section]['max_y'] = max(sections[cell.section]['max_y'], cy + cell.bbox[3]//2)
-    
-    # STRATEGY: Check which sections are to the LEFT or ABOVE the badge
-    # Badges sit on the right/bottom edge of sections
-    
-    candidates = []
-    
-    for section_id, section_data in sections.items():
-        # SKIP if this section already has a badge assigned
-        if section_id in already_assigned_sections:
-            continue
         
-        # Check if badge is on the RIGHT edge of this section (section is to the LEFT)
-        on_right_edge = (
-            section_data['min_x'] <= badge_x - search_distance and  # Section extends left
-            section_data['max_x'] >= badge_x - search_distance and  # But not too far left
-            section_data['min_y'] <= badge_y <= section_data['max_y']  # Y overlaps
-        )
+        # Calculate distance from search point to this cell
+        dist = np.sqrt((search_x - cx)**2 + (search_y - cy)**2)
         
-        # Check if badge is on the BOTTOM edge of this section (section is ABOVE)
-        on_bottom_edge = (
-            section_data['min_y'] <= badge_y - search_distance and  # Section extends up
-            section_data['max_y'] >= badge_y - search_distance and  # But not too far up
-            section_data['min_x'] <= badge_x <= section_data['max_x']  # X overlaps
-        )
-        
-        if on_right_edge or on_bottom_edge:
-            # Calculate distance to section
-            # Use closest point on section boundary
-            closest_x = max(section_data['min_x'], min(badge_x, section_data['max_x']))
-            closest_y = max(section_data['min_y'], min(badge_y, section_data['max_y']))
-            dist = np.sqrt((badge_x - closest_x)**2 + (badge_y - closest_y)**2)
-            
-            candidates.append((section_id, dist))
+        if dist < min_dist:
+            min_dist = dist
+            closest_cell = cell
     
-    if not candidates:
-        # Fallback: Find closest unassigned section (any direction)
-        for section_id, section_data in sections.items():
-            # SKIP if already assigned
-            if section_id in already_assigned_sections:
-                continue
-            
-            # Find closest cell in this section
-            min_dist = float('inf')
-            for cell in section_data['cells']:
-                cx, cy = cell.center
-                dist = np.sqrt((badge_x - cx)**2 + (badge_y - cy)**2)
-                min_dist = min(min_dist, dist)
-            candidates.append((section_id, min_dist))
+    # Return the section of the closest cell to our northwest search point
+    if closest_cell is not None:
+        return closest_cell.section
     
-    if not candidates:
-        return None
-    
-    # Return the closest unassigned section
-    candidates.sort(key=lambda x: x[1])
-    return candidates[0][0]
+    return None
 
 
 def extract_constraints(grid: GridResult,

@@ -14,7 +14,7 @@
       "debug": {
         "chosen_pitch": 105,
         "adaptive_pitch_min": 105,
-        "adaptive_pitch_max": 110,
+        "adaptive_pitch_max": 142,
         "offset_dx": 96,
         "offset_dy": 96,
         "cells": 0,
@@ -23,7 +23,7 @@
         "H": 315,
         "W": 724,
         "pitch_min_ratio": 0.1,
-        "pitch_max_ratio": 0.35,
+        "pitch_max_ratio": 0.45,
         "absolute_pitch_min": 50,
         "absolute_pitch_max": 500,
         "practical_pitch_min": 105,
@@ -598,7 +598,7 @@
           ],
           "color_hex": "#c93079",
           "section_color": "#e89fae",
-          "section_id": 14,
+          "section_id": 7,
           "text": "30"
         },
         {
@@ -646,7 +646,7 @@
           ],
           "color_hex": "#c83079",
           "section_color": "#e89fae",
-          "section_id": 12,
+          "section_id": 1,
           "text": "="
         },
         {
@@ -662,7 +662,7 @@
           ],
           "color_hex": "#c25e27",
           "section_color": "#e9bd8c",
-          "section_id": 1,
+          "section_id": 9,
           "text": "0"
         },
         {
@@ -694,7 +694,7 @@
           ],
           "color_hex": "#5b7521",
           "section_color": "#b6b18a",
-          "section_id": 7,
+          "section_id": 5,
           "text": ">4"
         },
         {
@@ -774,7 +774,7 @@
         "H": 872,
         "W": 999,
         "pitch_min_ratio": 0.1,
-        "pitch_max_ratio": 0.35,
+        "pitch_max_ratio": 0.45,
         "absolute_pitch_min": 50,
         "absolute_pitch_max": 500,
         "practical_pitch_min": 105,

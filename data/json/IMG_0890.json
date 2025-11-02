@@ -217,7 +217,7 @@
           ],
           "color_hex": "#9251ca",
           "section_color": "#c3a2bf",
-          "section_id": 1,
+          "section_id": 0,
           "text": "<2"
         },
         {
@@ -233,7 +233,7 @@
           ],
           "color_hex": "#db137a",
           "section_color": "#e89fae",
-          "section_id": 3,
+          "section_id": 1,
           "text": "5"
         }
       ],
@@ -249,7 +249,7 @@
         "H": 622,
         "W": 796,
         "pitch_min_ratio": 0.1,
-        "pitch_max_ratio": 0.35,
+        "pitch_max_ratio": 0.45,
         "absolute_pitch_min": 50,
         "absolute_pitch_max": 500,
         "practical_pitch_min": 105,

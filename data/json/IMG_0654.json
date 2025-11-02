@@ -361,7 +361,7 @@
           ],
           "color_hex": "#464fb0",
           "section_color": "#b2a5bf",
-          "section_id": 7,
+          "section_id": 3,
           "text": "10"
         },
         {
@@ -377,7 +377,7 @@
           ],
           "color_hex": "#008293",
           "section_color": "#9dbfc1",
-          "section_id": 9,
+          "section_id": 8,
           "text": "10"
         },
         {
@@ -393,7 +393,7 @@
           ],
           "color_hex": "#da137a",
           "section_color": "#e89fae",
-          "section_id": 8,
+          "section_id": 7,
           "text": "<4"
         },
         {
@@ -409,7 +409,7 @@
           ],
           "color_hex": "#db137a",
           "section_color": "#e89fae",
-          "section_id": 3,
+          "section_id": 0,
           "text": "="
         },
         {
@@ -441,7 +441,7 @@
           ],
           "color_hex": "#008293",
           "section_color": "#9dbfc1",
-          "section_id": 0,
+          "section_id": 1,
           "text": "12"
         },
         {
@@ -585,7 +585,7 @@
           ],
           "color_hex": "#9251c9",
           "section_color": "#c3a2bf",
-          "section_id": 2,
+          "section_id": 1,
           "text": ">4"
         }
       ],
