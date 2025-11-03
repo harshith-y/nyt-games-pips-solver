@@ -479,6 +479,10 @@ class CSPSolver:
         This is the KEY generalizable improvement: we consider both
         - How constrained the current edge is (MRV - fewer options = pick first)
         - How constraining choosing this edge would be (LCV - more constraining = pick last)
+        
+        CRITICAL FIX: Edges connecting TO tight regions (like sum=0) should be
+        PRIORITIZED, not deferred, as they're necessary to satisfy the constraint.
+        Only defer edges WITHIN tight regions that have many options.
         """
         candidates_list = []
         
@@ -525,20 +529,37 @@ class CSPSolver:
             r2 = self.puzzle.get_region(c2)
             same_region = (r1 is r2)
             
-            # Check if in a highly constrained region (tight sum constraints)
-            tight_constraint = False
-            for r in [r1, r2]:
-                if r.constraint_type == 'sum' and r.constraint_value is not None:
-                    if r.constraint_value <= 6:  # Very tight
-                        tight_constraint = True
+            # NEW: Distinguish between edges WITHIN vs CONNECTING TO tight regions
+            within_tight_region = False
+            connecting_to_tight_region = False
+            
+            if same_region:
+                # Both cells in same region - check if it's tight
+                if r1.constraint_type == 'sum' and r1.constraint_value is not None:
+                    if r1.constraint_value <= 6:
+                        within_tight_region = True
+            else:
+                # Spanning two regions - check if connecting TO a tight region
+                for r in [r1, r2]:
+                    if r.constraint_type == 'sum' and r.constraint_value is not None:
+                        if r.constraint_value <= 6:
+                            # This edge provides value TO a tight region
+                            # IMPORTANT: These should be prioritized, not deferred!
+                            connecting_to_tight_region = True
+                            break
             
             # Sort key:
-            # 1. Fewer options (MRV) - but not TOO few if highly constraining
-            # 2. NOT in tight constraint regions (defer these)
-            # 3. Lower constraining score (less impact on neighbors)
-            # 4. Prefer same region (more localized)
-            # 5. Cell ID for determinism
-            sort_key = (count, tight_constraint, constraining_score, not same_region, c1.id + c2.id)
+            # 1. Connecting to tight regions should come EARLY (low priority number)
+            # 2. Fewer options (MRV)
+            # 3. NOT within tight regions (defer these only if same region)
+            # 4. Lower constraining score (less impact on neighbors)
+            # 5. Prefer same region (more localized)
+            # 6. Cell ID for determinism
+            
+            # Priority boost for edges connecting to tight regions
+            priority_boost = 0 if connecting_to_tight_region else 1
+            
+            sort_key = (priority_boost, count, within_tight_region, constraining_score, not same_region, c1.id + c2.id)
             
             candidates_list.append((sort_key, c1, c2, candidates))
         

@@ -25,10 +25,10 @@ except ImportError:
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
-IMAGE_PATH = "data/json/pips_example2.json"   # Puzzle to solve by default
+IMAGE_PATH = "data/json/IMG_0880.json"   # Puzzle to solve by default
 OUTPUT_DIR = "data/debug"                # Base output directory
-SOLVE_ALL = False                        # Set True to solve all JSON puzzles
-USE_LCV = True                           # Toggle least-constraining-value ordering
+SOLVE_ALL = True                      # Set True to solve all JSON puzzles
+USE_LCV = True                           # Toggle least-constraining-value ordering (RECOMMENDED: True)
 # ============================================================================
 
 
@@ -134,19 +134,27 @@ def solve_all_puzzles(data_dir: str = None, output_dir: str = None):
     print(f"\nFound {len(json_files)} puzzle(s) to solve\n")
     results = []
 
-    for json_file in json_files:
+    for i, json_file in enumerate(json_files, 1):
+        print(f"\n[{i}/{len(json_files)}] Solving {json_file.name}...")
+        
         solved, puzzle, solver = solve_puzzle(
             str(json_file),
             output_dir=output_dir,
             verbose=False
         )
-        results.append({
+        
+        result = {
             'file': json_file.name,
             'solved': bool(solved),
             'cells': len(puzzle.cells) if puzzle else None,
             'moves': len(puzzle.move_history) if puzzle else None,
             'backtracks': solver.stats['backtracks'] if solver else None
-        })
+        }
+        results.append(result)
+        
+        # Print immediate result
+        status = "✓ SOLVED" if solved else "✗ FAILED"
+        print(f"  {status}")
 
     # ---------------------------
     # Print summary
@@ -155,7 +163,11 @@ def solve_all_puzzles(data_dir: str = None, output_dir: str = None):
     print("SUMMARY")
     print(f"{'='*60}")
     solved_count = sum(1 for r in results if r['solved'])
-    print(f"Solved: {solved_count}/{len(results)} puzzles\n")
+    total_count = len(results)
+    solve_rate = (solved_count / total_count * 100) if total_count > 0 else 0
+    
+    print(f"Solved: {solved_count}/{total_count} puzzles ({solve_rate:.1f}%)")
+    print(f"{'='*60}\n")
 
     for r in results:
         status = "✓" if r['solved'] else "✗"
@@ -164,6 +176,10 @@ def solve_all_puzzles(data_dir: str = None, output_dir: str = None):
             print(f" - {r['cells']} cells, {r['moves']} moves, {r['backtracks']} backtracks")
         else:
             print(" - Failed")
+    
+    print(f"\n{'='*60}")
+    print(f"Final Solve Rate: {solve_rate:.1f}% ({solved_count}/{total_count})")
+    print(f"{'='*60}")
 
 
 def main():
