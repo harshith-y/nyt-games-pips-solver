@@ -1,0 +1,290 @@
+{
+  "boards": [
+    {
+      "board_index": 1,
+      "board_w": 617,
+      "board_h": 801,
+      "pitch": 186.0,
+      "offset": [
+        0,
+        0
+      ],
+      "cells": [
+        {
+          "id": 0,
+          "row": 0,
+          "col": 0,
+          "bbox": [
+            0,
+            0,
+            186,
+            186
+          ],
+          "center": [
+            93,
+            93
+          ],
+          "section": 0
+        },
+        {
+          "id": 1,
+          "row": 1,
+          "col": 0,
+          "bbox": [
+            0,
+            186,
+            186,
+            186
+          ],
+          "center": [
+            93,
+            279
+          ],
+          "section": 1
+        },
+        {
+          "id": 2,
+          "row": 2,
+          "col": 0,
+          "bbox": [
+            0,
+            372,
+            186,
+            186
+          ],
+          "center": [
+            93,
+            465
+          ],
+          "section": 1
+        },
+        {
+          "id": 3,
+          "row": 2,
+          "col": 1,
+          "bbox": [
+            186,
+            372,
+            186,
+            186
+          ],
+          "center": [
+            279,
+            465
+          ],
+          "section": 2
+        },
+        {
+          "id": 4,
+          "row": 2,
+          "col": 2,
+          "bbox": [
+            372,
+            372,
+            186,
+            186
+          ],
+          "center": [
+            465,
+            465
+          ],
+          "section": 3
+        },
+        {
+          "id": 5,
+          "row": 3,
+          "col": 0,
+          "bbox": [
+            0,
+            558,
+            186,
+            186
+          ],
+          "center": [
+            93,
+            651
+          ],
+          "section": 1
+        },
+        {
+          "id": 6,
+          "row": 3,
+          "col": 1,
+          "bbox": [
+            186,
+            558,
+            186,
+            186
+          ],
+          "center": [
+            279,
+            651
+          ],
+          "section": 4
+        },
+        {
+          "id": 7,
+          "row": 3,
+          "col": 2,
+          "bbox": [
+            372,
+            558,
+            186,
+            186
+          ],
+          "center": [
+            465,
+            651
+          ],
+          "section": 4
+        }
+      ],
+      "badges": [
+        {
+          "bbox": [
+            476,
+            659,
+            141,
+            142
+          ],
+          "center": [
+            546,
+            730
+          ],
+          "color_hex": "#d05609",
+          "section_color": "#e9bd8c",
+          "section_id": 4,
+          "text": "="
+        },
+        {
+          "bbox": [
+            117,
+            642,
+            141,
+            159
+          ],
+          "center": [
+            187,
+            721
+          ],
+          "color_hex": "#db137a",
+          "section_color": "#e89fae",
+          "section_id": 1,
+          "text": "3"
+        },
+        {
+          "bbox": [
+            457,
+            480,
+            160,
+            155
+          ],
+          "center": [
+            537,
+            557
+          ],
+          "color_hex": "#008293",
+          "section_color": "#9dbfc1",
+          "section_id": 3,
+          "text": "2"
+        },
+        {
+          "bbox": [
+            116,
+            122,
+            141,
+            140
+          ],
+          "center": [
+            186,
+            192
+          ],
+          "color_hex": "#9251c9",
+          "section_color": "#c3a2bf",
+          "section_id": 0,
+          "text": "3"
+        }
+      ],
+      "debug": {
+        "chosen_pitch": 186,
+        "adaptive_pitch_min": 105,
+        "adaptive_pitch_max": 200,
+        "offset_dx": 0,
+        "offset_dy": 0,
+        "cells": 8,
+        "phase_score": 1488,
+        "content_score": 352.6690087111651,
+        "H": 801,
+        "W": 617,
+        "pitch_min_ratio": 0.1,
+        "pitch_max_ratio": 0.45,
+        "absolute_pitch_min": 50,
+        "absolute_pitch_max": 500,
+        "practical_pitch_min": 105,
+        "practical_pitch_max": 200,
+        "core_erode_px": 2,
+        "core_frac": 0.6,
+        "core_palette_thresh": 0.3,
+        "overlap_thresh": 0.65,
+        "void_max": 0.1,
+        "fine_phase_steps": [
+          4,
+          2,
+          1
+        ],
+        "hsv_s_min": 22,
+        "hsv_v_min": 115,
+        "use_hsv_fallback_in_placeable": true,
+        "delta_e_core": 20.0,
+        "delta_e_placeable": 22.0,
+        "num_sections": 5
+      }
+    }
+  ],
+  "dominoes": [
+    {
+      "id": 0,
+      "bbox": [
+        62,
+        2248,
+        240,
+        123
+      ],
+      "pips_left": 4,
+      "pips_right": 2
+    },
+    {
+      "id": 1,
+      "bbox": [
+        332,
+        2248,
+        239,
+        123
+      ],
+      "pips_left": 0,
+      "pips_right": 3
+    },
+    {
+      "id": 2,
+      "bbox": [
+        601,
+        2248,
+        239,
+        123
+      ],
+      "pips_left": 1,
+      "pips_right": 3
+    },
+    {
+      "id": 3,
+      "bbox": [
+        870,
+        2248,
+        240,
+        123
+      ],
+      "pips_left": 2,
+      "pips_right": 3
+    }
+  ]
+}

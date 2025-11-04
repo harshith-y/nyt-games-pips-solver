@@ -23,10 +23,13 @@ Placement = Tuple[int, str]
 
 
 class CSPSolver:
-    def __init__(self, puzzle: PipsPuzzle, verbose: bool = True, use_lcv: bool = False):
+    def __init__(self, puzzle: PipsPuzzle, verbose: bool = True, use_lcv: bool = False, use_aggressive_heuristics: bool = True, skip_heuristics: bool = False):
         self.puzzle = puzzle
         self.verbose = verbose
         self.use_lcv = use_lcv
+        self.use_aggressive_heuristics = use_aggressive_heuristics  # NEW: control heuristics
+        self.skip_heuristics = skip_heuristics  # NEW: skip heuristics entirely
+        self.in_backtrack_mode = False  # Track if we're in backtracking (vs heuristics)
         self.stats = {
             'backtracks': 0,
             'heuristic_moves': 0,
@@ -101,19 +104,24 @@ class CSPSolver:
             raise RuntimeError("Dominoes already placed at start")
 
         # Phase 1: VERY conservative heuristics (only absolutely forced moves)
-        if self.verbose:
-            print("=== Phase 1: Conservative Heuristics ===")
-        
-        heur_count = self._apply_conservative_heuristics()
-        
-        if self.verbose:
-            print(f"Heuristic placements: {heur_count}")
-
-        if self.puzzle.is_complete():
+        if not self.skip_heuristics:
             if self.verbose:
-                print("\n✓ Solved using heuristics alone!")
-                self._print_stats()
-            return True
+                print("=== Phase 1: Conservative Heuristics ===")
+            
+            heur_count = self._apply_conservative_heuristics()
+            
+            if self.verbose:
+                print(f"Heuristic placements: {heur_count}")
+
+            if self.puzzle.is_complete():
+                if self.verbose:
+                    print("\n✓ Solved using heuristics alone!")
+                    self._print_stats()
+                return True
+        else:
+            if self.verbose:
+                print("=== Phase 1: Heuristics SKIPPED ===")
+            heur_count = 0
 
         # Phase 2: MRV backtracking with forward checking
         if self.verbose:
@@ -121,6 +129,7 @@ class CSPSolver:
             print(f"\n=== Phase 2: MRV Backtracking ===")
             print(f"Starting at {cp:.1%} complete\n")
 
+        self.in_backtrack_mode = True  # Enable permissive mode for backtracking
         result = self._backtrack_mrv(0)
         
         if self.verbose:
@@ -136,14 +145,7 @@ class CSPSolver:
         """
         Apply ONLY conservative heuristics that are definitely forced.
         
-        We avoid:
-        - Region-sum forcing (too prone to false positives)
-        - Aggressive edge/cell singleton (might commit to wrong path)
-        
-        We only apply:
-        - Isolated cell forcing (cell with only one neighbor)
-        - Isolated edge forcing (both cells have no other options)
-        - CRITICAL REGION forcing (regions with sum=0 or other impossible-to-satisfy constraints)
+        Can be partially or fully disabled via use_aggressive_heuristics flag.
         """
         total = 0
         max_rounds = 10  # Safety limit
@@ -151,19 +153,20 @@ class CSPSolver:
         for _ in range(max_rounds):
             made = 0
             
-            # NEW: Try critical region forcing first (like sum=0)
-            made += self._heuristic_critical_regions()
-            if made:
-                total += made
-                continue
+            # Try critical region forcing first (like sum=0) - OPTIONAL
+            if self.use_aggressive_heuristics:
+                made += self._heuristic_critical_regions()
+                if made:
+                    total += made
+                    continue
             
-            # Try isolated cell forcing
+            # Try isolated cell forcing - ALWAYS enabled (safe)
             made += self._heuristic_isolated_cell()
             if made:
                 total += made
                 continue
             
-            # Try truly isolated edge forcing
+            # Try truly isolated edge forcing - ALWAYS enabled (safe)
             made += self._heuristic_truly_isolated_edge()
             if made:
                 total += made
@@ -179,7 +182,12 @@ class CSPSolver:
         Example: Region with 3 cells, sum=0 - only (0,0) can work.
         
         For such regions, pre-commit the forced domino placement.
+        
+        NOTE: This can sometimes lead to dead ends, so it's optional.
         """
+        if not self.use_aggressive_heuristics:
+            return 0  # Skip if disabled
+        
         for region in self.puzzle.regions.values():
             if region.constraint_type != 'sum' or region.constraint_value is None:
                 continue
@@ -786,62 +794,100 @@ class CSPSolver:
     
     def _check_regions_solvable(self) -> bool:
         """
-        GENERAL check: for each region, verify it's still possible to satisfy its constraint
-        given the remaining empty cells and available dominoes.
+        SIMPLIFIED: Check only provably impossible states.
         
-        This is a generalizable pruning technique that works for any constraint type.
+        Removed aggressive "ends counting" and predictive logic that was too
+        conservative. Only validates completed regions and basic bounds for
+        incomplete regions.
         """
+
         for region in self.puzzle.regions.values():
             empty_cells = region.get_empty_cells()
+
+            # =========================
+            # Completed region checks
+            # =========================
             if not empty_cells:
-                # Region is complete, check if satisfied
-                if region.constraint_type == 'sum' and region.constraint_value is not None:
-                    if region.current_sum != region.constraint_value:
+                ct, cv = region.constraint_type, region.constraint_value
+                if ct == 'sum' and cv is not None and region.current_sum != cv:
+                    if self.verbose:
+                        print(f"    [FC] prune: R{region.section_id} sum mismatch")
+                    self.stats['forward_check_prunes'] += 1
+                    return False
+                if ct == 'less_than' and cv is not None and not (region.current_sum < cv):
+                    if self.verbose:
+                        print(f"    [FC] prune: R{region.section_id} violates <")
+                    self.stats['forward_check_prunes'] += 1
+                    return False
+                if ct == 'greater_than' and cv is not None and not (region.current_sum > cv):
+                    if self.verbose:
+                        print(f"    [FC] prune: R{region.section_id} violates >")
+                    self.stats['forward_check_prunes'] += 1
+                    return False
+                if ct == 'equal':
+                    filled = region.get_filled_cells()
+                    if filled:
+                        v = filled[0].value
+                        if any(c.value != v for c in filled):
+                            if self.verbose:
+                                print(f"    [FC] prune: R{region.section_id} equal violated")
+                            self.stats['forward_check_prunes'] += 1
+                            return False
+                if ct == 'not_equal':
+                    filled = region.get_filled_cells()
+                    vals = [c.value for c in filled]
+                    if len(vals) != len(set(vals)):
+                        if self.verbose:
+                            print(f"    [FC] prune: R{region.section_id} not_equal violated")
+                        self.stats['forward_check_prunes'] += 1
                         return False
                 continue
-            
-            # For SUM constraints, check if target is still reachable
-            if region.constraint_type == 'sum' and region.constraint_value is not None:
-                target = region.constraint_value
-                current = region.current_sum
-                remaining_cells = len(empty_cells)
-                
-                # Calculate min/max achievable with remaining cells
-                # Each cell gets half a domino, value range [0, 6]
-                min_possible = current + 0 * remaining_cells
-                max_possible = current + 6 * remaining_cells
-                
-                # Target must be achievable
-                if target < min_possible or target > max_possible:
+
+            # =========================
+            # Incomplete region checks - BASIC ONLY
+            # =========================
+            ct, cv = region.constraint_type, region.constraint_value
+            remaining_cells = len(empty_cells)
+
+            # Basic bounds checking only - no aggressive predictions
+            if ct == 'sum' and cv is not None:
+                cur = region.current_sum
+                # Simple interval: can target be reached with 0..6 per cell?
+                if cv < cur or cv > cur + 6 * remaining_cells:
+                    if self.verbose:
+                        print(f"    [FC] prune: R{region.section_id} sum unreachable")
+                    self.stats['forward_check_prunes'] += 1
                     return False
-                
-                # Additional check: count available pip values in remaining dominoes
-                # that could fill these cells
-                available_pips = []
-                for d in self.puzzle.dominoes:
-                    if not d.placed:
-                        available_pips.append(d.pips_left)
-                        available_pips.append(d.pips_right)
-                
-                # Check if we have enough small/large values
-                # If target requires all zeros but we don't have enough, fail
-                needed_sum = target - current
-                if needed_sum < 0:
-                    return False  # Already exceeded
-                
-                # Can we make the needed sum with available pips?
-                # Sort available pips
-                available_pips_sorted = sorted(available_pips)
-                
-                # Minimum achievable: use smallest pips
-                if remaining_cells <= len(available_pips_sorted):
-                    min_with_available = sum(available_pips_sorted[:remaining_cells])
-                    max_with_available = sum(available_pips_sorted[-remaining_cells:])
-                    
-                    if needed_sum < min_with_available or needed_sum > max_with_available:
+
+            elif ct == 'equal':
+                # Only check that existing values match
+                filled = region.get_filled_cells()
+                if filled:
+                    v0 = filled[0].value
+                    if any(c.value != v0 for c in filled):
+                        if self.verbose:
+                            print(f"    [FC] prune: R{region.section_id} equal mismatch")
+                        self.stats['forward_check_prunes'] += 1
                         return False
-        
+
+            elif ct == 'less_than' and cv is not None:
+                if region.current_sum >= cv:
+                    if self.verbose:
+                        print(f"    [FC] prune: R{region.section_id} already too large")
+                    self.stats['forward_check_prunes'] += 1
+                    return False
+
+            elif ct == 'greater_than' and cv is not None:
+                max_possible = region.current_sum + 6 * remaining_cells
+                if max_possible <= cv:
+                    if self.verbose:
+                        print(f"    [FC] prune: R{region.section_id} cannot reach minimum")
+                    self.stats['forward_check_prunes'] += 1
+                    return False
+
         return True
+
+
     
     # -------------------------------------------------------------------------
     # Domain save/restore

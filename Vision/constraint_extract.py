@@ -262,10 +262,42 @@ def ocr_badge_text_easyocr(badge_roi: np.ndarray, reader, debug: bool = False,
             print(f"      '{text}' (conf={conf:.2f}, {approach})")
     
     if all_results:
-        # Get result with highest confidence
-        best = max(all_results, key=lambda x: x[1])
-        text = best[0]
-        confidence = best[1]
+        # SMART SELECTION: If we have BOTH "<3" and "3", prefer "<3" when it has high confidence (>0.9)
+        # This is because OCR sometimes splits "<3" into just "3"
+        comparison_results = [(t, c, m) for (t, c, m) in all_results if t.startswith('<') or t.startswith('>')]
+        plain_results = [(t, c, m) for (t, c, m) in all_results if not (t.startswith('<') or t.startswith('>'))]
+        
+        if comparison_results and plain_results:
+            best_comparison = max(comparison_results, key=lambda x: x[1])
+            best_plain = max(plain_results, key=lambda x: x[1])
+            
+            # Only prefer comparison if it has high confidence (>0.9)
+            # AND the plain version might just be the number from the comparison (e.g., "<3" vs "3")
+            if best_comparison[1] >= 0.90:
+                # Check if plain result is just the number part of the comparison
+                # e.g., best_comparison = "<3", best_plain = "3"
+                comparison_number = best_comparison[0].lstrip('<>').lstrip()
+                if comparison_number == best_plain[0]:
+                    # The plain result is just the number from the comparison - prefer comparison
+                    text = best_comparison[0]
+                    confidence = best_comparison[1]
+                    if debug:
+                        print(f"    Note: Chose '{text}' (conf={confidence:.2f}) over '{best_plain[0]}' (conf={best_plain[1]:.2f}) - comparison has high confidence")
+                else:
+                    # They're different numbers, pick highest confidence
+                    best = max(all_results, key=lambda x: x[1])
+                    text = best[0]
+                    confidence = best[1]
+            else:
+                # Comparison confidence too low, pick highest confidence overall
+                best = max(all_results, key=lambda x: x[1])
+                text = best[0]
+                confidence = best[1]
+        else:
+            # No comparison vs plain conflict, just pick highest confidence
+            best = max(all_results, key=lambda x: x[1])
+            text = best[0]
+            confidence = best[1]
     else:
         text = ""
         confidence = 0.0
@@ -347,11 +379,13 @@ def ocr_badge_text_easyocr(badge_roi: np.ndarray, reader, debug: bool = False,
             if debug:
                 print(f"    Note: Number {num} too large for valid constraint, assuming '≠'")
     
-    # Also catch common OCR variations of "≠"
-    # "44" = two horizontal lines seen as two 4's
-    # "72" = slash + lines misread
-    # "7/2", "Z2", etc. = partial recognition of the slash
-    if text in ["44", "7/2", "7Z", "7z", "Z2", "7l", "7I", "/=", "4/4"]:
+    # Expanded list of OCR variations for "≠"
+    not_equals_patterns = [
+        "44", "44=", "7:", ":7", "7/2", "7Z", "7z", "Z2", "7l", "7I", "/=", "4/4",
+        "72", "74", "47", "9=", "4=",  # Additional patterns
+    ]
+    
+    if text in not_equals_patterns:
         text = "≠"
         if debug:
             print(f"    Note: Detected common '≠' OCR variation '{text}', correcting")
@@ -488,6 +522,30 @@ def ocr_badge_text_easyocr(badge_roi: np.ndarray, reader, debug: bool = False,
                 print(f"          Full check: strong_extreme={has_strong_extreme}, sym<0.20={reasonably_similar_ends}, mid_weak={middle_is_weak}")
                 print(f"          no_struct_vert={no_structural_verticals} (need L>0.35 AND R>0.25), dominates={at_least_one_dominates}")
                 print(f"          Kept as '4' (not all conditions met)")
+
+    # FINAL CHECK: If OCR returned "4" with high confidence but ALL regions are very bright,
+    # it's likely "≠" (which is filled with lines everywhere)
+    # Real "4" has contrast between regions, "≠" is bright everywhere
+    if text == "4" and confidence > 0.90:
+        h, w = processed.shape if len(processed.shape) == 2 else processed.shape[:2]
+        if h > 20 and w > 20:
+            top_strip = processed[int(h*0.20):int(h*0.30), :]
+            mid_strip = processed[int(h*0.45):int(h*0.55), :]
+            bot_strip = processed[int(h*0.70):int(h*0.80), :]
+            
+            top_bright = np.mean(top_strip > 127)
+            mid_bright = np.mean(mid_strip > 127)
+            bot_bright = np.mean(bot_strip > 127)
+            
+            # "≠" is bright EVERYWHERE (lines + diagonal fill most of the space)
+            # Real "4" has clear dark regions
+            all_very_bright = (top_bright > 0.75 and mid_bright > 0.75 and bot_bright > 0.85)
+            
+            if all_very_bright:
+                text = "≠"
+                if debug:
+                    print(f"    Note: '4' with 100% conf but ALL regions very bright → '≠'")
+                    print(f"          top={top_bright:.2f}, mid={mid_bright:.2f}, bot={bot_bright:.2f}")
 
     if debug:
         print(f"    FINAL Result: '{text}' (confidence: {confidence:.2f})")
