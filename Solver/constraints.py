@@ -1,15 +1,11 @@
 """
-Constraint checking and heuristic detection for Pips solver
+Constraint checking and heuristic detection
+    - Correct SAME-region combined handling
+    - Placement-time guards for < and >
+    - Mild one-cell SUM look-ahead
+    - Value-routing feasibility with INTERNAL (v,v) pairs allowance (now puzzle-aware)
+    - HeuristicDetector unchanged (calls the updated checker)
 
-Key points:
- - Correct SAME-region combined handling
- - Placement-time guards for < and >
- - Mild one-cell SUM look-ahead
- - Value-routing feasibility with INTERNAL (v,v) pairs allowance (now puzzle-aware)
- - HeuristicDetector unchanged (calls the updated checker)
-
-Compatible with:
-  from puzzle import PipsPuzzle, Cell, Region, Domino
 """
 
 from typing import List, Tuple, Optional, Dict, Set
@@ -21,7 +17,6 @@ from puzzle import PipsPuzzle, Cell, Region, Domino
 # -----------------------------------------------------------------------------
 class ConstraintChecker:
     """Validates domino placements against constraints."""
-
     # ---------- small helpers ----------
 
     @staticmethod

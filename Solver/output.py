@@ -1,7 +1,3 @@
-"""
-Output formatter for Pips solver
-Converts solved puzzle into various output formats
-"""
 import json
 from typing import Dict, List
 from puzzle import PipsPuzzle

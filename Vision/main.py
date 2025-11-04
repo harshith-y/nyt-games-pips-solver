@@ -1,9 +1,3 @@
-# main.py
-# Driver: Phase-1 crop → Phase-2 cell detection → Phase-3 section detection → Domino + Pip detection
-# Saves overlays and a JSON summary.
-
-# ==================================================================
-# CONFIGURATION: Easy Toggle
 # ==================================================================
 BATCH_MODE = True  # Set to True to process ALL images in data/samples/
 IMAGE_PATH = "data/samples/IMG_0654.PNG"  # Used when BATCH_MODE = False
@@ -13,11 +7,11 @@ OUTPUT_DIR = "data/debug"
 import os, json, cv2
 import numpy as np
 
-from Vision.board_crop import crop_puzzle_boards, detect_dominoes  # Phase 1 + Domino detection
-from Vision.pip_detect import detect_all_pips, visualize_pip_counts  # Pip detection
-from Vision.cell_grid import detect_cells, CellDetectConfig  # Phase 2
-from Vision.section_detect import assign_sections, visualize_sections  # Phase 3
-from Vision.constraint_extract import extract_constraints, visualize_badges  # Phase 4
+from board_crop import crop_puzzle_boards, detect_dominoes  # Phase 1 + Domino detection
+from pip_detect import detect_all_pips, visualize_pip_counts  # Pip detection
+from cell_grid import detect_cells, CellDetectConfig  # Phase 2
+from section_detect import assign_sections, visualize_sections  # Phase 3
+from constraint_extract import extract_constraints, visualize_badges  # Phase 4
 
 PALETTE_INCLUDE = [
     "#c3a2bf",  # purple

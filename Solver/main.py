@@ -1,12 +1,3 @@
-#!/usr/bin/env python3
-"""
-Pips Solver - Main Entry Point (Updated with Configurable Heuristics)
-
-Usage:
-    python -m Solver.main data/json/puzzle.json
-    python -m Solver.main  # Solves all puzzles in data/json/
-"""
-
 import sys
 import os
 from pathlib import Path
@@ -15,20 +6,13 @@ from puzzle import PipsPuzzle
 from solver import CSPSolver    
 from output import SolutionFormatter
 
-# Optional diagnostics (if available)
-try:
-    from diagnose_solver import SolverDiagnostics
-    HAS_DIAGNOSTICS = True
-except ImportError:
-    HAS_DIAGNOSTICS = False
-
 # ============================================================================
-# CONFIGURATION
-# ============================================================================
-IMAGE_PATH = "data/json/IMG_0925.json"   # Puzzle to solve by default
-OUTPUT_DIR = "data/debug"                  # Base output directory
+IMAGE_PATH = "data/json/IMG_0925.json"  
+OUTPUT_DIR = "data/debug"               
 SOLVE_ALL = True                          # Set True to solve all JSON puzzles
+# ============================================================================
 
+# ============================================================================
 # --- Solver Strategy Configuration ---
 # These flags control the solver's behavior:
 
@@ -51,7 +35,6 @@ SKIP_HEURISTICS = False
 TIMEOUT_SECONDS = 300
 # Maximum time to spend solving a single puzzle
 # ============================================================================
-
 
 def solve_puzzle(input_path: str, output_dir: str = None, verbose: bool = True,
                  use_lcv: bool = USE_LCV,
@@ -134,11 +117,8 @@ def solve_puzzle(input_path: str, output_dir: str = None, verbose: bool = True,
                 print("\n" + SolutionFormatter.format_solution_human_readable(puzzle))
                 print(SolutionFormatter.format_grid_visualization(puzzle))
 
-            # Optional diagnostics summary
-            if HAS_DIAGNOSTICS:
-                SolverDiagnostics.print_summary(solver, puzzle, output_dir)
-
             return True, puzzle, solver
+        
         else:
             print(f"\n{'='*60}")
             print("FAILED: Could not solve puzzle ✗")

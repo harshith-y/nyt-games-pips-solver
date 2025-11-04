@@ -1,15 +1,11 @@
-# solver_fixed.py
 """
-Fixed CSP Solver for Pips puzzles with conservative heuristics
-
-Key fixes:
+CSP Solver for Pips puzzles with conservative heuristics
 1. Conservative heuristics - only apply when TRULY forced
 2. No aggressive region-sum forcing (too prone to errors)
 3. Backtracking can explore alternatives even after heuristic phase
 4. Forward checking is validation-only, doesn't pre-commit moves
 5. MRV ordering with proper domain tracking
 
-This approach is more generalizable across different puzzle types.
 """
 
 from typing import List, Dict, Set, Tuple, Optional

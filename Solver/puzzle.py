@@ -1,6 +1,3 @@
-"""
-Core data structures for Pips puzzle representation with multi-board support
-"""
 import json
 from typing import List, Dict, Set, Tuple, Optional
 from dataclasses import dataclass, field
