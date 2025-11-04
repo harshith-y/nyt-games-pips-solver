@@ -25,7 +25,7 @@ except ImportError:
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
-IMAGE_PATH = "data/json/IMG_0880.json"   # Puzzle to solve by default
+IMAGE_PATH = "data/json/IMG_0925.json"   # Puzzle to solve by default
 OUTPUT_DIR = "data/debug"                  # Base output directory
 SOLVE_ALL = True                          # Set True to solve all JSON puzzles
 

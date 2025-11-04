@@ -19,7 +19,6 @@ from Vision.cell_grid import detect_cells, CellDetectConfig  # Phase 2
 from Vision.section_detect import assign_sections, visualize_sections  # Phase 3
 from Vision.constraint_extract import extract_constraints, visualize_badges  # Phase 4
 
-# Your manual palette (INCLUDE beige so undotted beige sections are detected)
 PALETTE_INCLUDE = [
     "#c3a2bf",  # purple
     "#e1cbc5",  # light beige
