@@ -1,10 +1,10 @@
 """
 CSP Solver for Pips puzzles with conservative heuristics
-1. Conservative heuristics - only apply when TRULY forced
-2. No aggressive region-sum forcing (too prone to errors)
-3. Backtracking can explore alternatives even after heuristic phase
-4. Forward checking is validation-only, doesn't pre-commit moves
-5. MRV ordering with proper domain tracking
+    - Conservative heuristics - only apply when TRULY forced
+    - No aggressive region-sum forcing (too prone to errors)
+    - Backtracking can explore alternatives even after heuristic phase
+    - Forward checking is validation-only, doesn't pre-commit moves
+    - MRV ordering with proper domain tracking
 
 """
 

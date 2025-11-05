@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass
-from Vision.cell_grid import GridResult
+from cell_grid import GridResult
 import easyocr
 from PIL import Image
 

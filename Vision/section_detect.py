@@ -6,7 +6,7 @@ from typing import List, Tuple, Dict, Set
 from collections import deque
 
 # Import from cell_grid
-from Vision.cell_grid import Cell, GridResult
+from cell_grid import Cell, GridResult
 
 
 def _hex_to_rgb(hex_str: str) -> Tuple[int, int, int]:
