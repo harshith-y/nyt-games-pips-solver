@@ -9,7 +9,7 @@ from output import SolutionFormatter
 # ============================================================================
 IMAGE_PATH = "data/json/IMG_1014.json"  
 OUTPUT_DIR = "data/debug"               
-SOLVE_ALL = False                          # Set True to solve all JSON puzzles
+SOLVE_ALL = True                          # Set True to solve all JSON puzzles
 # ============================================================================
 
 # ============================================================================

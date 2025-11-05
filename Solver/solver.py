@@ -31,11 +31,18 @@ class CSPSolver:
             'heuristic_moves': 0,
             'search_moves': 0,
             'total_attempts': 0,
-            'forward_check_prunes': 0
+            'forward_check_prunes': 0,
+            'thrash_escapes': 0,
+            'heuristic_backtracks': 0
         }
         # Domains: for each edge, set of (domino_id, orientation)
         self.domains: Dict[EdgeKey, Set[Placement]] = {}
         self._init_domains()
+        
+        # Thrashing detection
+        self.last_completion_check = 0.0
+        self.backtracks_at_last_check = 0
+        self.thrash_detection_interval = 1000
 
     # -------------------------------------------------------------------------
     # Domain management
@@ -83,6 +90,39 @@ class CSPSolver:
             else:
                 self.domains[key] = self._compute_edge_domain(c1, c2)
 
+    def _detect_thrashing(self) -> bool:
+        """
+        Check if we're thrashing (lots of backtracks, no progress).
+        Returns True if thrashing detected.
+        """
+        # Don't check until we have meaningful data
+        if self.stats['total_attempts'] < 1000:
+            return False
+        
+        # Only check periodically
+        if self.stats['total_attempts'] % self.thrash_detection_interval != 0:
+            return False
+        
+        current_completion = self.puzzle.get_completion_percentage()
+        backtracks_since_check = self.stats['backtracks'] - self.backtracks_at_last_check
+        
+        # Thrashing = many backtracks (>500) but very little progress (<5%)
+        is_thrashing = (
+            backtracks_since_check > 500 and
+            abs(current_completion - self.last_completion_check) < 0.05
+        )
+        
+        # Update for next check
+        self.last_completion_check = current_completion
+        self.backtracks_at_last_check = self.stats['backtracks']
+        
+        if is_thrashing and self.verbose:
+            print(f"\n⚠️  THRASHING DETECTED at {current_completion:.1%} complete")
+            print(f"   {backtracks_since_check} backtracks with minimal progress")
+            print(f"   Forcing different search path...\n")
+        
+        return is_thrashing
+
     # -------------------------------------------------------------------------
     # Main solving driver
     # -------------------------------------------------------------------------
@@ -119,20 +159,145 @@ class CSPSolver:
                 print("=== Phase 1: Heuristics SKIPPED ===")
             heur_count = 0
 
+        # Remember how many moves came from heuristics
+        heuristic_move_count = len(self.puzzle.move_history)
+
         # Phase 2: MRV backtracking with forward checking
+        cp = self.puzzle.get_completion_percentage()
         if self.verbose:
-            cp = self.puzzle.get_completion_percentage()
             print(f"\n=== Phase 2: MRV Backtracking ===")
             print(f"Starting at {cp:.1%} complete\n")
 
-        self.in_backtrack_mode = True  # Enable permissive mode for backtracking
+        self.in_backtrack_mode = True
+        
+        # Reset thrashing detection for this phase
+        self.last_completion_check = cp
+        self.backtracks_at_last_check = self.stats['backtracks']
+        
         result = self._backtrack_mrv(0)
         
+        if result:
+            if self.verbose:
+                print("\n✓ Puzzle solved!")
+                self._print_stats()
+            return True
+        
+        # Phase 3: Backtrack over heuristic moves if search exhausted
+        if heuristic_move_count > 0 and not result:
+            if self.verbose:
+                print(f"\n⚠️  Search exhausted with {heuristic_move_count} heuristic moves")
+                print(f"=== Phase 3: Backtracking Over Heuristics ===")
+                print(f"Trying alternatives to heuristic moves...\n")
+            
+            # Try removing heuristic moves one by one
+            max_heuristic_undos = min(heuristic_move_count, 3)
+            
+            for undo_attempt in range(max_heuristic_undos):
+                if not self.puzzle.move_history:
+                    break
+                
+                # Check timeout
+                if time.time() - self.start_time > self.timeout:
+                    break
+                
+                last_move = self.puzzle.move_history[-1]
+                
+                if self.verbose:
+                    print(f"Attempt {undo_attempt + 1}/{max_heuristic_undos}:")
+                    print(f"  Undoing heuristic: {last_move['domino']} "
+                          f"at cells {last_move['cell1'].id}-{last_move['cell2'].id}")
+                
+                # Remove the heuristic move
+                self._remove_domino(
+                    last_move['domino'],
+                    last_move['cell1'],
+                    last_move['cell2']
+                )
+                self._refresh_domains()
+                self.stats['heuristic_backtracks'] += 1
+                
+                # Reset thrashing detection for retry
+                cp = self.puzzle.get_completion_percentage()
+                self.last_completion_check = cp
+                self.backtracks_at_last_check = self.stats['backtracks']
+                
+                # Try solving again
+                result = self._backtrack_mrv(0)
+                
+                if result:
+                    if self.verbose:
+                        print(f"\n✓ Puzzle solved after undoing heuristic move!")
+                        self._print_stats()
+                    return True
+                
+                if self.verbose:
+                    print(f"  Still failed after {self.stats['backtracks'] - self.backtracks_at_last_check} backtracks")
+        
+        # Phase 4: Randomized restarts for genuinely hard puzzles
+        if not result and time.time() - self.start_time < self.timeout - 10:
+            if self.verbose:
+                print(f"\n⚠️  All strategies exhausted")
+                print(f"=== Phase 4: Randomized Restarts ===")
+                print(f"Trying different variable orderings...\n")
+            
+            # Try up to 3 restarts with different strategies
+            max_restarts = 3
+            
+            for restart_num in range(max_restarts):
+                # Check timeout
+                if time.time() - self.start_time > self.timeout - 5:
+                    break
+                
+                if self.verbose:
+                    print(f"Restart {restart_num + 1}/{max_restarts}:")
+                
+                # Reset puzzle state
+                for d in self.puzzle.dominoes:
+                    if d.placed:
+                        self._remove_domino(d, d.cell1, d.cell2)
+                
+                self._refresh_domains()
+                
+                # Reset stats for this restart
+                restart_attempts_start = self.stats['total_attempts']
+                restart_backtracks_start = self.stats['backtracks']
+                
+                # Try different variable selection strategies
+                if restart_num == 0:
+                    # Strategy 1: Most flexible first (opposite of MRV)
+                    if self.verbose:
+                        print(f"  Strategy: Most flexible variable first")
+                    result = self._backtrack_flexible_first(0)
+                elif restart_num == 1:
+                    # Strategy 2: Random variable selection
+                    if self.verbose:
+                        print(f"  Strategy: Random variable selection")
+                    result = self._backtrack_random(0)
+                else:
+                    # Strategy 3: Different MRV tie-breaking
+                    if self.verbose:
+                        print(f"  Strategy: MRV with different tie-breaking")
+                    result = self._backtrack_mrv_alt(0)
+                
+                if result:
+                    if self.verbose:
+                        attempts_this_restart = self.stats['total_attempts'] - restart_attempts_start
+                        backtracks_this_restart = self.stats['backtracks'] - restart_backtracks_start
+                        print(f"\n✓ Puzzle solved with restart {restart_num + 1}!")
+                        print(f"  Attempts in this restart: {attempts_this_restart}")
+                        print(f"  Backtracks in this restart: {backtracks_this_restart}")
+                        self._print_stats()
+                    return True
+                
+                if self.verbose:
+                    attempts_this_restart = self.stats['total_attempts'] - restart_attempts_start
+                    print(f"  Failed after {attempts_this_restart} attempts")
+        
         if self.verbose:
-            print("\n✓ Puzzle solved!" if result else "\n✗ No solution found")
+            print("\n✗ No solution found")
             self._print_stats()
         
-        return result
+        return False
 
     # -------------------------------------------------------------------------
     # Conservative heuristics (only truly forced moves)
@@ -369,6 +534,11 @@ class CSPSolver:
         
         self.stats['total_attempts'] += 1
         
+        # Thrashing detection
+        if self._detect_thrashing():
+            self.stats['thrash_escapes'] += 1
+            return False
+        
         # Progress reporting
         if self.verbose and self.stats['total_attempts'] % 1000 == 0:
             cp = self.puzzle.get_completion_percentage()
@@ -437,6 +607,191 @@ class CSPSolver:
                 
                 if self.verbose and depth < 3:
                     print(f"{'  ' * depth}  Backtrack")
+        
+        return False
+    
+    def _backtrack_flexible_first(self, depth: int) -> bool:
+        """
+        Alternative strategy: Pick variables with MOST options first (opposite of MRV).
+        Good for escaping over-constrained local areas.
+        """
+        import time
+        
+        if time.time() - self.start_time > self.timeout:
+            return False
+        
+        if self.puzzle.is_complete():
+            return True
+        
+        self.stats['total_attempts'] += 1
+        
+        if self._detect_thrashing():
+            self.stats['thrash_escapes'] += 1
+            return False
+        
+        # Select edges with MOST options (flexibility)
+        pairs_to_try = self._select_flexible_pairs(k=3)
+        
+        if not pairs_to_try:
+            return False
+        
+        for c1, c2, candidates in pairs_to_try:
+            for did, ori in candidates:
+                d = next((x for x in self.puzzle.dominoes if x.id == did), None)
+                if not d or d.placed:
+                    continue
+                
+                if not ConstraintChecker.is_valid_placement(self.puzzle, d, c1, c2, ori):
+                    continue
+                
+                saved_domains = self._save_domains()
+                self._place_domino(d, c1, c2, ori)
+                self.stats['search_moves'] += 1
+                self._refresh_domains()
+                
+                if not self._forward_check_valid():
+                    self._remove_domino(d, c1, c2)
+                    self._restore_domains(saved_domains)
+                    self.stats['forward_check_prunes'] += 1
+                    continue
+                
+                if self._backtrack_flexible_first(depth + 1):
+                    return True
+                
+                self._remove_domino(d, c1, c2)
+                self._restore_domains(saved_domains)
+                self.stats['backtracks'] += 1
+        
+        return False
+    
+    def _backtrack_random(self, depth: int) -> bool:
+        """
+        Alternative strategy: Random variable and value selection.
+        Useful for escaping systematic bias in search.
+        """
+        import time
+        import random
+        
+        if time.time() - self.start_time > self.timeout:
+            return False
+        
+        if self.puzzle.is_complete():
+            return True
+        
+        self.stats['total_attempts'] += 1
+        
+        if self._detect_thrashing():
+            self.stats['thrash_escapes'] += 1
+            return False
+        
+        # Get all valid edges and shuffle
+        all_pairs = []
+        for key, domain in self.domains.items():
+            c1 = self.puzzle.cell_by_id[key[0]]
+            c2 = self.puzzle.cell_by_id[key[1]]
+            
+            if c1.occupied or c2.occupied:
+                continue
+            
+            candidates = []
+            for did, ori in domain:
+                d = next((x for x in self.puzzle.dominoes if x.id == did), None)
+                if d and not d.placed:
+                    candidates.append((did, ori))
+            
+            if candidates:
+                all_pairs.append((c1, c2, candidates))
+        
+        if not all_pairs:
+            return False
+        
+        # Pick random edge
+        random.shuffle(all_pairs)
+        pairs_to_try = all_pairs[:3]  # Try 3 random edges
+        
+        for c1, c2, candidates in pairs_to_try:
+            # Shuffle value order too
+            candidates_shuffled = candidates.copy()
+            random.shuffle(candidates_shuffled)
+            
+            for did, ori in candidates_shuffled:
+                d = next((x for x in self.puzzle.dominoes if x.id == did), None)
+                if not d or d.placed:
+                    continue
+                
+                if not ConstraintChecker.is_valid_placement(self.puzzle, d, c1, c2, ori):
+                    continue
+                
+                saved_domains = self._save_domains()
+                self._place_domino(d, c1, c2, ori)
+                self.stats['search_moves'] += 1
+                self._refresh_domains()
+                
+                if not self._forward_check_valid():
+                    self._remove_domino(d, c1, c2)
+                    self._restore_domains(saved_domains)
+                    self.stats['forward_check_prunes'] += 1
+                    continue
+                
+                if self._backtrack_random(depth + 1):
+                    return True
+                
+                self._remove_domino(d, c1, c2)
+                self._restore_domains(saved_domains)
+                self.stats['backtracks'] += 1
+        
+        return False
+    
+    def _backtrack_mrv_alt(self, depth: int) -> bool:
+        """
+        Alternative MRV: Different tie-breaking (prefer different regions).
+        """
+        import time
+        
+        if time.time() - self.start_time > self.timeout:
+            return False
+        
+        if self.puzzle.is_complete():
+            return True
+        
+        self.stats['total_attempts'] += 1
+        
+        if self._detect_thrashing():
+            self.stats['thrash_escapes'] += 1
+            return False
+        
+        # Use alternative MRV selection (prefer spanning regions)
+        pairs_to_try = self._select_top_mrv_pairs(k=3)
+        
+        if not pairs_to_try:
+            return False
+        
+        for c1, c2, candidates in pairs_to_try:
+            for did, ori in candidates:
+                d = next((x for x in self.puzzle.dominoes if x.id == did), None)
+                if not d or d.placed:
+                    continue
+                
+                if not ConstraintChecker.is_valid_placement(self.puzzle, d, c1, c2, ori):
+                    continue
+                
+                saved_domains = self._save_domains()
+                self._place_domino(d, c1, c2, ori)
+                self.stats['search_moves'] += 1
+                self._refresh_domains()
+                
+                if not self._forward_check_valid():
+                    self._remove_domino(d, c1, c2)
+                    self._restore_domains(saved_domains)
+                    self.stats['forward_check_prunes'] += 1
+                    continue
+                
+                if self._backtrack_mrv_alt(depth + 1):
+                    return True
+                
+                self._remove_domino(d, c1, c2)
+                self._restore_domains(saved_domains)
+                self.stats['backtracks'] += 1
         
         return False
     
@@ -971,4 +1326,8 @@ class CSPSolver:
         print(f"  Backtracks: {self.stats['backtracks']}")
         print(f"  Forward check prunes: {self.stats['forward_check_prunes']}")
         print(f"  Total attempts: {self.stats['total_attempts']}")
+        if self.stats['thrash_escapes'] > 0:
+            print(f"  Thrashing escapes: {self.stats['thrash_escapes']}")
+        if self.stats['heuristic_backtracks'] > 0:
+            print(f"  Heuristic backtracks: {self.stats['heuristic_backtracks']}")
         print(f"  Final placements: {len(self.puzzle.move_history)}")
