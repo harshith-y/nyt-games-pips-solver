@@ -1,14 +1,6 @@
-"""
-Diagnostic Script: Understand WHY puzzles fail at 87%
-
-This will help us add TARGETED fixes instead of generic "improvements"
-"""
-
 import sys
 from pathlib import Path
 
-# Add parent directory to path so we can import from Solver
-# Assumes this file is in: /Users/harshith/Documents/Projects/NYTGames/Pips/Solver/
 sys.path.insert(0, str(Path(__file__).parent))
 
 from puzzle import PipsPuzzle
@@ -17,12 +9,12 @@ import time
 
 
 def analyze_failure(json_path: str, timeout: int = 60):
-    """Deeply analyze why a puzzle fails."""
+    """Deeply analyze why a puzzle fails"""
     
     puzzle = PipsPuzzle(json_path)
     solver = CSPSolver(
         puzzle,
-        verbose=True,  # CRITICAL: see what it's doing
+        verbose=True,  # CRITICAL
         use_lcv=True,
         use_aggressive_heuristics=False,
         skip_heuristics=False
@@ -103,8 +95,6 @@ def analyze_failure(json_path: str, timeout: int = 60):
 def main():
     """Analyze all puzzles and identify patterns in failures."""
     
-    # UPDATE THIS: Path to your JSON puzzle files
-    # Adjust this to match YOUR project structure
     project_root = Path(__file__).parent.parent  # Goes up to NYTGames/Pips/
     data_dir = project_root / "data" / "json"
     
@@ -117,7 +107,6 @@ def main():
         # Option 2: Manually specify files (if data/json doesn't exist)
         print(f"Warning: {data_dir} not found. Using manual file list.")
         test_files = [
-            # UPDATE THIS LIST with your actual puzzle files
             "IMG_0958.json",
             "IMG_0962.json", 
             "IMG_0963.json",
